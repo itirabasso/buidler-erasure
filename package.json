@@ -1,9 +1,9 @@
 {
-  "name": "@nomiclabs/buidler-ts-plugin-boilerplate",
+  "name": "buidler-erasure",
   "version": "0.0.1",
-  "description": "Buidler TypeScript plugin boilerplate",
-  "repository": "github:nomiclabs/buidler-ts-plugin-boilerplate",
-  "author": "Nomic Labs LLC",
+  "description": "Buidler Erasure plugin",
+  "repository": "github:itirabasso/buidler-erasure",
+  "author": "itirabasso",
   "license": "MIT",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -29,12 +29,14 @@
   ],
   "devDependencies": {
     "@nomiclabs/buidler": "^1.0.1",
+    "@nomiclabs/buidler-ethers": "^1.0.1",
     "@types/chai": "^4.1.7",
     "@types/fs-extra": "^5.0.4",
     "@types/mocha": "^5.2.5",
     "@types/node": "^8.10.38",
     "chai": "^4.2.0",
     "dotenv": "^6.2.0",
+    "eslint": "^6.6.0",
     "mocha": "^5.2.0",
     "prettier": "^1.17.0",
     "source-map-support": "^0.5.12",
@@ -42,9 +44,13 @@
     "tslint": "^5.16.0",
     "tslint-config-prettier": "^1.18.0",
     "tslint-plugin-prettier": "^2.0.1",
-    "typescript": "^3.4.5"
+    "typescript": "^3.4.5",
+    "buidler-erasure": "file:../buidler-erasure"
   },
   "peerDependencies": {
     "@nomiclabs/buidler": "^1.0.1"
+  },
+  "dependencies": {
+    "erasure-protocol": "github:erasureprotocol/erasure-protocol#master"
   }
 }
