@@ -134,10 +134,7 @@ const getLatestContractAdressFrom = async (provider, address) => {
 export function abiEncodeWithSelector(functionName, abiTypes, abiValues) {
   const abiEncoder = new ethers.utils.AbiCoder();
   const initData = abiEncoder.encode(abiTypes, abiValues);
-  const selector = createSelector(
-    functionName,
-    abiTypes
-  );
+  const selector = createSelector(functionName, abiTypes);
   const encoded = selector + initData.slice(2);
   return encoded;
 }

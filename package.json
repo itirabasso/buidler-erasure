@@ -48,9 +48,11 @@
     "buidler-erasure": "file:../buidler-erasure"
   },
   "peerDependencies": {
+    "ethers": "^4.0.39",
     "@nomiclabs/buidler": "^1.0.1"
   },
   "dependencies": {
-    "erasure-protocol": "github:erasureprotocol/erasure-protocol#master"
+    "erasure-protocol": "github:erasureprotocol/erasure-protocol#master",
+    "fs-extra": "^8.1.0"
   }
 }

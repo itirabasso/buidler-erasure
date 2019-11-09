@@ -1,22 +1,21 @@
 import { TASK_COMPILE_GET_SOURCE_PATHS } from "@nomiclabs/buidler/builtin-tasks/task-names";
-import { extendConfig, internalTask, task } from "@nomiclabs/buidler/config";
-import { usePlugin } from "@nomiclabs/buidler/config";
-import { glob } from "@nomiclabs/buidler/internal/util/glob";
 import {
-  ensurePluginLoadedWithUsePlugin,
-  lazyObject,
-  readArtifact
-} from "@nomiclabs/buidler/plugins";
+  extendConfig,
+  internalTask,
+  task,
+  usePlugin
+} from "@nomiclabs/buidler/config";
+import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { readFileSync } from "fs";
 import path from "path";
 
+import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
 
 // @ts-ignore
 
 usePlugin("@nomiclabs/buidler-ethers");
-
 ensurePluginLoadedWithUsePlugin();
 
 export default function() {
@@ -124,33 +123,36 @@ export default function() {
     await env.run("compile");
   });
 
-  internalTask(
-    "deploy:deploy",
+  internalTask("deploy:deploy").setAction(
     async (
       { name, params }: { name: string; params: any[] },
-      { ethers }: any
+      { ethers, run }: BuidlerRuntimeEnvironment | any
     ) => {
       // update artifacts
       // await env.run("compile");
 
       console.log("deploy:deploy", name, params);
-      const contractFactory = await ethers.getContract(name);
-      const contract = await contractFactory.deploy(...params);
-      // await env.deployments.saveDeployedContract(name, instance);
+      // const contractFactory = await ethers.getContract(name);
+      // const contract = await contractFactory.deploy(...params);
+      // // await env.deployments.saveDeployedContract(name, instance);
 
+      // const receipt = await ethers.provider.getTransactionReceipt(
+      //   contract.deployTransaction.hash
+      // );
+      // console.log("Deploy", contract.address, name, receipt.gasUsed.toString());
+      const contract = await run("deploy", { name, params });
       const receipt = await ethers.provider.getTransactionReceipt(
         contract.deployTransaction.hash
       );
-      console.log("Deploy", contract.address, name, receipt.gasUsed.toString());
       return [contract, receipt];
     }
   );
 
-  task(
-    "deploy-contract",
+  // TODO : this task seems unnecessary
+  internalTask("deploy:deploy-contract").setAction(
     async (
       { name, params, signer }: { name: string; params: any[]; signer: any },
-      { run }: BuidlerRuntimeEnvironment
+      { run, deployments }: BuidlerRuntimeEnvironment & any
     ) => {
       // console.log("deploy:deploy-contract", name, params);
       const [contract, _] = await run("deploy:deploy", {
@@ -162,9 +164,7 @@ export default function() {
     }
   );
 
-  task(
-    "create-instance",
-    "Creates a new instance from a factory",
+  task("create-instance", "Creates a new instance from a factory").setAction(
     async (args: any, { ethers }: any) => {
       const { factory, params, values, provider } = args;
       const tx = await factory.create(
@@ -175,8 +175,7 @@ export default function() {
     }
   );
 
-  task(
-    "deploy-factory",
+  internalTask("deploy:deploy-factory").setAction(
     async (
       {
         factory,
@@ -195,8 +194,8 @@ export default function() {
         params: [],
         signer
       });
-      console.log('Template deployed', templateContract.address);
-      console.log("deploying factory", factory, registry);
+      // console.log("Template deployed");
+      console.log("deploying factory");
       const [factoryContract, __] = await run("deploy:deploy", {
         name: factory,
         params: [registry.address, templateContract.address],
@@ -210,60 +209,68 @@ export default function() {
     }
   );
 
-  task(
-    "deploy-factories",
-    async (
-      { deployer, factories }: { deployer: any; factories: any },
-      { run }: BuidlerRuntimeEnvironment
-    ) => {
-      console.log("Deploy Factories", factories.config);
-
-      const fs = Object.entries(factories).reduce(
-        async (acc: any, [name, { config }]: any) => {
-          console.log("Factory", name, config);
-          return {
-            ...acc,
-            [name]: await run("deploy-factory", { ...config, signer: deployer })
-          };
-        },
-        {}
-      );
-
-      console.log("fs", await fs);
-      return fs;
-      // return await Promise.all(fs);
-    }
-  )
+  internalTask("deploy:deploy-factories")
     .addParam(
       "factories",
       "List of factories name to deploy (separated by comma)"
     )
-    .addParam("deployer");
+    .addParam("deployer")
+    .setAction(
+      async (
+        { deployer, factories }: { deployer: any; factories: any },
+        { run }: BuidlerRuntimeEnvironment
+      ) => {
+        console.log("Deploy Factories");
 
-  task(
-    "deploy-registries",
-    async (
-      { deployer, registries }: { deployer: any; registries: any },
-      { run }: BuidlerRuntimeEnvironment
-    ) => {
-      console.log("Deploy Registries");
+        const fs = Object.entries(factories).reduce(
+          async (acc: any, [name, { config }]: any) => {
+            console.log("Factory", name, config);
+            return {
+              ...acc,
+              [name]: await run("deploy:deploy-factory", {
+                ...config,
+                signer: deployer
+              })
+            };
+          },
+          {}
+        );
 
-      const rs = await Promise.all(
-        Object.entries(registries).map(([name, r]) =>
-          run("deploy-contract", { name, params: [], signer: deployer })
-        )
-      );
-    }
-  )
+        // console.log("fs", await fs);
+        return fs;
+        // return await Promise.all(fs);
+      }
+    );
+
+  internalTask("deploy:deploy-registries")
     .addParam(
       "registries",
       "List of registries name to deploy (separated by comma)"
     )
-    .addParam("deployer");
+    .addParam("deployer")
+    .setAction(
+      async (
+        { deployer, registries }: { deployer: any; registries: any },
+        { run }: BuidlerRuntimeEnvironment
+      ) => {
+        console.log("Deploy Registries");
 
-  // TODO : is the sending balance thing really necessary?
-  task(
-    "deploy-nmr",
+        const rs = await Promise.all(
+          Object.entries(registries).map(([name, r]) =>
+            run("deploy:deploy-contract", {
+              name,
+              params: [],
+              signer: deployer
+            })
+          )
+        );
+        // console.log("rs", rs);
+        return rs;
+      }
+    );
+
+  // TODO : is sending balance to the nmrSigner really necessary?
+  task("deploy-nmr", "Deploys the Numerai main contract").setAction(
     async (
       { deployer, nmr }: { deployer: any; nmr: string },
       { run, ethers }: any
@@ -278,7 +285,7 @@ export default function() {
       // needs to increment the nonce to 1 by
       // await deployer.sendTransaction({ to: deployer.address, value: 0 });
 
-      return run("deploy-contract", {
+      return run("deploy:deploy-contract", {
         name: nmr,
         params: [],
         signer: deployer
@@ -316,11 +323,14 @@ export default function() {
         setupFile === undefined ? defaultDeploySetup : setupFile;
 
       await run("deploy-nmr", { deployer: nmrSigner, nmr: setup.numerai });
-      await run("deploy-registries", {
+      await run("deploy:deploy-registries", {
         deployer,
         registries: setup.registries
       });
-      await run("deploy-factories", { deployer, factories: setup.factories });
+      await run("deploy:deploy-factories", {
+        deployer,
+        factories: setup.factories
+      });
 
       // TODO: move this somewhere else
       console.log("Create Test Instances");
