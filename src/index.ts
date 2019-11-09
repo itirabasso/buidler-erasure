@@ -28,8 +28,8 @@ export default function() {
     factories: {
       SimpleGriefing: {
         config: {
-          factoryArtifact: "SimpleGriefing_Factory",
-          templateArtifact: "SimpleGriefing",
+          factory: "SimpleGriefing_Factory",
+          template: "SimpleGriefing",
           registry: "Erasure_Agreements"
         }
       },
@@ -183,10 +183,13 @@ export default function() {
         registry,
         signer
       }: { factory: string; template: string; registry: any; signer: any },
-      { run }: BuidlerRuntimeEnvironment
+      { run, deployments }: BuidlerRuntimeEnvironment
     ) => {
       // const { templateArtifact, factoryArtifact } = artifacts;
       // console.log('Deploying Factory', factory, template, registry)
+
+      const registryInstance = (await deployments.getDeployedContracts(registry))[0]
+      console.log(registry, "=>", registryInstance.address);
 
       console.log("deploying template");
       const [templateContract, _] = await run("deploy:deploy", {
@@ -198,10 +201,10 @@ export default function() {
       console.log("deploying factory");
       const [factoryContract, __] = await run("deploy:deploy", {
         name: factory,
-        params: [registry.address, templateContract.address],
+        params: [registryInstance.address, templateContract.address],
         signer
       });
-      const tx = await registry.addFactory(factoryContract.address, "0x");
+      const tx = await registryInstance.addFactory(factoryContract.address, "0x");
       // const receipt = await env.ethers.provider.getTransactionReceipt(tx.hash);
       // console.log("addFactory", /*contractName,*/ receipt.gasUsed.toString());
 

@@ -10,6 +10,7 @@ declare module "@nomiclabs/buidler/types" {
   // This new field will be available in tasks' actions, scripts, and tests.
   export interface BuidlerRuntimeEnvironment {
     deployments: {
+      getDeployedAddresses(name: string): string[];
       getDeployedContracts(contractName: string): Promise<Contract[]>;
       saveDeployedContract(name: string, instance: any): void;
     };
