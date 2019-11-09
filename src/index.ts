@@ -1,8 +1,4 @@
-import {
-  internalTask,
-  task,
-  usePlugin
-} from "@nomiclabs/buidler/config";
+import { internalTask, task, usePlugin } from "@nomiclabs/buidler/config";
 import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 
@@ -15,77 +11,45 @@ usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
 export default function() {
-  const defaultDeploySetup = {
-    numerai: "MockNMR",
-    registries: {
-      Erasure_Agreements: {},
-      Erasure_Posts: {}
-    },
-    factories: {
-      SimpleGriefing: {
-        config: {
-          factory: "SimpleGriefing_Factory",
-          template: "SimpleGriefing",
-          registry: "Erasure_Agreements"
-        }
+  function getDefaultSetup() {
+    return {
+      numerai: "MockNMR",
+      registries: {
+        Erasure_Agreements: {},
+        Erasure_Posts: {}
       },
-      CountdownGriefing: {
-        config: {
-          factory: "CountdownGriefing_Factory",
-          template: "CountdownGriefing",
-          registry: "Erasure_Agreements"
-        }
-      },
-      Feed: {
-        config: {
-          factory: "Feed_Factory",
-          template: "Feed",
-          registry: "Erasure_Posts"
-        }
-      },
-      Post: {
-        config: {
-          factory: "Post_Factory",
-          template: "Post",
-          registry: "Erasure_Posts"
+      factories: {
+        SimpleGriefing: {
+          config: {
+            factory: "SimpleGriefing_Factory",
+            template: "SimpleGriefing",
+            registry: "Erasure_Agreements"
+          }
+        },
+        CountdownGriefing: {
+          config: {
+            factory: "CountdownGriefing_Factory",
+            template: "CountdownGriefing",
+            registry: "Erasure_Agreements"
+          }
+        },
+        Feed: {
+          config: {
+            factory: "Feed_Factory",
+            template: "Feed",
+            registry: "Erasure_Posts"
+          }
+        },
+        Post: {
+          config: {
+            factory: "Post_Factory",
+            template: "Post",
+            registry: "Erasure_Posts"
+          }
         }
       }
-    }
-  };
-
-  const setup = {};
-
-  // TODO : why is this necessary? easier to mock?
-  // const c = {
-  //   NMR: {
-  //     artifact: require("./artifacts/MockNMR.json")
-  //   },
-  //   Erasure_Agreements: {
-  //     artifact: require("./artifacts/Erasure_Agreements.json")
-  //   },
-  //   Erasure_Posts: {
-  //     artifact: require("./artifacts/Erasure_Posts.json")
-  //   },
-  //   SimpleGriefing: {
-  //     factoryArtifact: require("./artifacts/SimpleGriefing_Factory.json"),
-  //     templateArtifact: require("./artifacts/SimpleGriefing.json")
-  //   },
-  //   CountdownGriefing: {
-  //     factoryArtifact: require("./artifacts/CountdownGriefing_Factory.json"),
-  //     templateArtifact: require("./artifacts/CountdownGriefing.json")
-  //   },
-  //   Feed: {
-  //     factoryArtifact: require("./artifacts/Feed_Factory.json"),
-  //     templateArtifact: require("./artifacts/Feed.json")
-  //   },
-  //   Post: {
-  //     factoryArtifact: require("./artifacts/Post_Factory.json"),
-  //     templateArtifact: require("./artifacts/Post.json")
-  //   }
-  // };
-
-  const nmrDeployAddress = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
-
+    };
+  }
   task("send-balance", async ({ from, to }, { ethers }: any) => {
     // const defaultSigner = (await env.ethers.signers())[9];
     // console.log(from, to)
@@ -127,7 +91,7 @@ export default function() {
   internalTask("erasure:deploy-contract").setAction(
     async (
       { name, params, signer }: { name: string; params: any[]; signer: any },
-      { run, deployments }: BuidlerRuntimeEnvironment & any
+      { run }: BuidlerRuntimeEnvironment
     ) => {
       // console.log("deploy:deploy-contract", name, params);
       const [contract, _] = await run("erasure:deploy", {
@@ -287,7 +251,7 @@ export default function() {
         const nmrSigner = signers[1];
 
         const setup: any =
-          setupFile === undefined ? defaultDeploySetup : setupFile;
+          setupFile === undefined ? getDefaultSetup() : setupFile;
 
         await run("erasure:deploy-numerai", {
           deployer: nmrSigner,

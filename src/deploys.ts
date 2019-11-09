@@ -44,12 +44,11 @@ task("deploy")
     ) => {
       // TODO : params' type check?
       const contractParams = params === undefined ? [] : params;
-      // console.log("DEPLOY:", name, params);
+
       // FIXME : override getContract function to receive a signer.
       const contractFactory = await env.ethers.getContract(name);
       const contract = await contractFactory.deploy(...contractParams);
       await env.deployments.saveDeployedContract(name, contract);
-      // console.log("Deployed", name, "on", contract.address);
       return contract;
     }
   );
