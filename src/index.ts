@@ -1,14 +1,10 @@
-import { TASK_COMPILE_GET_SOURCE_PATHS } from "@nomiclabs/buidler/builtin-tasks/task-names";
 import {
-  extendConfig,
   internalTask,
   task,
   usePlugin
 } from "@nomiclabs/buidler/config";
 import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { readFileSync } from "fs";
-import path from "path";
 
 import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
@@ -169,13 +165,13 @@ export default function() {
         registry
       ))[0];
 
-      console.log("deploying template");
+      // console.log("deploying template");
       const templateContract = await run("erasure:deploy-contract", {
         name: template,
         params: [],
         signer
       });
-      console.log("deploying factory");
+      // console.log("deploying factory", factory);
       const factoryContract = await run("erasure:deploy-contract", {
         name: factory,
         params: [registryInstance.address, templateContract.address],
@@ -197,16 +193,16 @@ export default function() {
         { deployer, factories }: { deployer: any; factories: any },
         { run }: BuidlerRuntimeEnvironment
       ) => {
-        console.log("Deploy Factories");
+        console.log("Deploying Factories");
 
         const fs = Object.entries(factories).reduce(
-          async (acc: any, [name, { config }]: any) =>
-            Object.assign(acc, {
-              [name]: await run("erasure:deploy-factory", {
-                ...config,
-                signer: deployer
-              })
-            }),
+          async (acc: any, [name, { config }]: any) => ({
+            ...acc,
+            [name]: await run("erasure:deploy-factory", {
+              ...config,
+              signer: deployer
+            })
+          }),
           {}
         );
         return fs;
@@ -224,7 +220,7 @@ export default function() {
         { deployer, registries }: { deployer: any; registries: any },
         { run }: BuidlerRuntimeEnvironment
       ) => {
-        console.log("Deploy Registries");
+        console.log("Deploying Registries");
 
         const rs = await Promise.all(
           Object.keys(registries).map(name =>
@@ -246,7 +242,7 @@ export default function() {
       { deployer, nmr }: { deployer: any; nmr: string },
       { run, ethers }: any
     ) => {
-      console.log("Deploy", nmr);
+      console.log("Deploying", nmr);
 
       // const from = (await ethers.signers())[2];
       // await run('send-balance', {from, to: deployer});

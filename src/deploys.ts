@@ -1,9 +1,12 @@
 import { extendEnvironment, task, usePlugin } from "@nomiclabs/buidler/config";
 import {
   ensurePluginLoadedWithUsePlugin,
-  lazyObject
+  lazyObject,
+  readArtifact
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
+import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
+
 import { Contract } from "ethers";
 import { existsSync } from "fs";
 import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
@@ -41,42 +44,54 @@ task("deploy")
     ) => {
       // TODO : params' type check?
       const contractParams = params === undefined ? [] : params;
-      console.log(name, params);
-      // update artifacts
-      // await env.run("compile");
-
+      // console.log("DEPLOY:", name, params);
+      // FIXME : override getContract function to receive a signer.
       const contractFactory = await env.ethers.getContract(name);
       const contract = await contractFactory.deploy(...contractParams);
       await env.deployments.saveDeployedContract(name, contract);
+      // console.log("Deployed", name, "on", contract.address);
       return contract;
     }
   );
 
-extendEnvironment((env: BuidlerRuntimeEnvironment) => {
+extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
   env.deployments = lazyObject(() => {
+    const getChainId = createChainIdGetter(env.ethereum);
     return {
-      getDeployedAddresses: (name: string): string[] => {
+      getDeployedAddresses: async (name: string): Promise<string[]> => {
         const state = readState();
-
         const network = env.network.config;
-        const chainId = network.chainId === undefined ? 9999 : network.chainId;
+        const chainId =
+          network.chainId === undefined ? await getChainId() : network.chainId;
 
         if (
           state[chainId] === undefined ||
           state[chainId][name] === undefined ||
           state[chainId][name].length === 0
         ) {
+          // chainId wasn't used before, contract wasn't deployed or the addresses were manually remove from state
           return [];
         }
+
         // TODO : not sure about this
         return state[chainId][name];
       },
 
       getDeployedContracts: async (name: string): Promise<Contract[]> => {
-        const addresses = env.deployments.getDeployedAddresses(name);
-        console.log("Found these addresses for", name, addresses);
+        const addresses = await env.deployments.getDeployedAddresses(name);
+        // console.log("Found these addresses for", name, addresses);
 
-        const factory = await (env as any).ethers.getContract(name);
+        const factory = await env.ethers.getContract(name);
+        const artifact = await readArtifact(env.config.paths.artifacts, name);
+
+        // TODO : should use deployedBytecode instead?
+        if (artifact.bytecode !== factory.bytecode) {
+          console.warn(
+            "Deployed contract",
+            name,
+            " does not match compiled local contract"
+          );
+        }
 
         return Promise.all(
           addresses.map((addr: string) => {
@@ -85,35 +100,45 @@ extendEnvironment((env: BuidlerRuntimeEnvironment) => {
         );
       },
 
-      saveDeployedContract: (name: string, instance: any): void => {
+      saveDeployedContract: async (
+        name: string,
+        instance: any
+      ): Promise<void> => {
         const state = readState();
         if (name === undefined) {
           throw new Error("saving contract with no name");
         }
         const network = env.network.config;
-        const chainId = network.chainId === undefined ? 9999 : network.chainId;
 
-        const isDeployed = () => {
-          return (
-            state[chainId] !== undefined &&
-            state[chainId][name] !== undefined &&
-            state[chainId][name].length > 0
-          );
-        };
+        const chainId =
+          network.chainId === undefined ? await getChainId() : network.chainId;
+
+        const isDeployed =
+          state[chainId] !== undefined &&
+          state[chainId][name] !== undefined &&
+          state[chainId][name].length > 0;
 
         // is it already deployed?
-        if (isDeployed()) {
-          // add it to the state.
-          const addresses = state[chainId][name];
-          addresses.unshift(instance.address);
-          state[chainId][name] = addresses;
+        if (isDeployed) {
+          const [last, ...previous] = state[chainId][name];
+
+          if (last !== instance.address) {
+            // place the new instance address first to the list
+            state[chainId][name] = [instance.address, last, ...previous];
+          } else {
+            // If the last deployed instance has the same address as the new instance,
+            // do not update the list of addresses
+            console.warn(
+              "The last deployed contract has the same address as the new one"
+            );
+          }
         } else {
           const addresses = [instance.address];
           // check if the chain is defined.
           if (state[chainId] === undefined) {
             // place the first contract with this chainId
             state[chainId] = {
-              name: addresses
+              [name]: addresses
             };
           } else {
             // just add the new contract to the state.
@@ -122,7 +147,6 @@ extendEnvironment((env: BuidlerRuntimeEnvironment) => {
         }
         // update state
         writeState(state);
-        console.log("contract saved");
       }
     };
   });
