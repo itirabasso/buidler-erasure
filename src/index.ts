@@ -1,4 +1,8 @@
 import {
+  TASK_RUN,
+  TASK_TEST
+} from "@nomiclabs/buidler/builtin-tasks/task-names";
+import {
   internalTask,
   task,
   usePlugin,
@@ -22,6 +26,15 @@ usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
 export default function() {
+  task(TASK_TEST, async (args, env, runSuper) => {
+    await env.run("deploy-full");
+    await runSuper();
+  });
+
+  task(TASK_RUN, async (args, env, runSuper) => {
+    await env.run("deploy-full");
+    await runSuper();
+  });
 
   internalTask("erasure:deploy").setAction(
     async (
