@@ -3,7 +3,6 @@ import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/
 import {
   ensurePluginLoadedWithUsePlugin,
   lazyObject,
-  readArtifact,
   readArtifactSync
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
@@ -32,7 +31,7 @@ if (!existsSync(stateFilename)) {
 
 // TODO : it should receive the contracts that we want to clean
 task("clean", async (args: any, env: any, runSuper: any) => {
-  // await runSuper();
+  await runSuper();
   setInitialState();
   console.log("deploy clean");
 });
@@ -59,9 +58,9 @@ task("deploy")
 extendEnvironment((env: BuidlerRuntimeEnvironment) => {
   env.deployments = lazyObject(() => {
     const getChainId = createChainIdGetter(env.ethereum);
-    // const getChainId = () => 99999;
     const setup: ErasureDeploySetup = defaultSetup;
     return {
+      deploySetup: setup,
       getDeployedAddresses: async (name: string): Promise<string[]> => {
         const state = readState();
         const network = env.network.config;
@@ -147,8 +146,7 @@ extendEnvironment((env: BuidlerRuntimeEnvironment) => {
         }
         // update state
         writeState(state);
-      },
-      deploySetup: setup
+      }
     };
   });
 });

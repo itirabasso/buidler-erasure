@@ -39,9 +39,6 @@ export default function() {
       { name, params }: { name: string; params: any[] },
       { ethers, run }: BuidlerRuntimeEnvironment | any
     ) => {
-      // update artifacts
-      // await env.run("compile");
-
       const contract = await run("deploy", { name, params });
       const receipt = await ethers.provider.getTransactionReceipt(
         contract.deployTransaction.hash
@@ -76,9 +73,9 @@ export default function() {
       }: { factory: string; template: string; registry: any; signer: any },
       { run, deployments }: BuidlerRuntimeEnvironment
     ) => {
-      const registryInstance = (await deployments.getDeployedContracts(
-        registry
-      ))[0];
+      const registryInstance = (
+        await deployments.getDeployedContracts(registry)
+      )[0];
 
       // console.log("deploying template", registryInstance.address);
       const templateContract = await run("erasure:deploy-contract", {
@@ -154,22 +151,12 @@ export default function() {
       }
     );
 
-  // TODO : is sending balance to the nmrSigner really necessary?
   internalTask(
     "erasure:deploy-numerai",
     "Deploys the Numerai main contract"
   ).setAction(
     async ({ deployer, nmr }: { deployer: any; nmr: string }, { run }: any) => {
       console.log("Deploying", nmr);
-
-      // const from = (await ethers.signers())[2];
-      // await run('send-balance', {from, to: deployer});
-      // console.log("NMR Signer balance updated");
-
-      // TODO : why is this needed?
-      // needs to increment the nonce to 1 by
-      // await deployer.sendTransaction({ to: deployer.address, value: 0 });
-
       return run("erasure:deploy-contract", {
         name: nmr,
         params: [],
@@ -227,9 +214,9 @@ export default function() {
       { ethers, deployments }: BuidlerRuntimeEnvironment
     ) => {
       const factory = (await deployments.getDeployedContracts(factoryName))[0];
-      const template = (await deployments.getDeployedContracts(
-        templateName
-      ))[0];
+      const template = (
+        await deployments.getDeployedContracts(templateName)
+      )[0];
 
       const tx = await factory.create(
         abiEncodeWithSelector("initialize", params, values)
@@ -306,6 +293,7 @@ export default function() {
             : ethers.provider.getSigner(account);
 
         const agreement = erasure.getContractInstance(
+          // it's a little bit lengthy but you can autocomplete it.
           deployments.deploySetup.factories.SimpleGriefing.config.template,
           address,
           signer
