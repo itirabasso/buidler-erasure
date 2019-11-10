@@ -1,57 +1,106 @@
-# Buidler TypeScript plugin boilerplate
+[![buidler](https://buidler.dev/buidler-plugin-badge.svg?1)](https://buidler.dev)
+# buidler-erasure
 
-This is a sample Buidler plugin written in TypeScript. Creating a Buidler plugin
-can be as easy as extracting a part of your config into a different file, 
-wrapping it in a function and publishing it to npm.
+Buidler plugin for Erasure protocol
 
-This sample project contains an example on how to do that, but also comes with 
-many more features:
+## What
 
-- A mocha test suit ready to use
-- TravisCI already setup
-- A package.json with scripts and publishing info
-- Examples on how to do different things
+<_A longer, one paragraph, description of the plugin_>
+
+This plugin will help you with world domination by implementing a simple tic-tac-toe in the terminal.
 
 ## Installation
 
-We recommend developing Buidler plugins using yarn. To start working on your 
-project, just run
+<_A step-by-step guide on how to install the plugin_>
+
+
 
 ```bash
-npm install
+npm install erasure-buidler ethers github:erasureprotocol/erasure-protocol#master
+```
+And add the following statement to your `buidler.config.js`:
+
+```js
+usePlugin("buidler-erasure");
 ```
 
-## Plugin development
+## Required plugins
 
-Make sure to read our [Plugin Development Guide](https://buidler.dev/guides/create-plugin.html) 
-to learn how to build a plugin, and our 
-[best practices to create high-quality plugins](https://buidler.dev/documentation/#plugin-development-best-practices).
+<_The list of all the required Buidler plugins if there are any_>
 
-## Testing
+- [@nomiclabs/buidler-ethers](https://github.com/nomiclabs/buidler/tree/master/packages/buidler-ethers)
 
-Running `npm run test` will run every test located in the `test/` folder. They 
-use [mocha](https://mochajs.org) and [chai](https://www.chaijs.com/), 
-but you can customize them.
+## Tasks
 
-We recommend creating unit tests for your own modules, and integration tests for 
-the interaction of the plugin with Buidler and its dependencies.
 
-## Linting and autoformat
+This plugin adds the following tasks to Buidler:
 
-All all of Buidler projects use [prettier](https://prettier.io/) and 
-[tslint](https://palantir.github.io/tslint/).
 
-You can check if your code style is correct by running `npm run lint`, and fix 
-it with `npm run lint:fix`.
+- `erasure:deploy-full`: Deploy the whole platform
+- `erasure:create-instance`: Creates a new instance from a factory
+- `erasure:create-agreement`:	Creates an Simple Agreement
+- `erasure:stake`: Stake NMR in an Simple Griefing Agreement
+- `erasure:copy-contracts`: Temporal task. Copy the erasure protocol contracts into your project's sources folder.
 
-## Building the project
 
-Just run `npm run buidl` ️👷‍
+## Environment extensions
 
-## README file
+This plugin extends the Buidler Runtime Environment by adding the following elements:
 
-This README describes this boilerplate project, but won't be very useful to your
-plugin users.
+```js
+  erasure: {
+    deploySetup: ErasureDeploySetup;
+    getDeployedAddresses(name: string): Promise<string[]>;
+    getDeployedContracts(contractName: string): Promise<Contract[]>;
+    saveDeployedContract(name: string, instance: any): void;
+    getContractInstance(
+      name: string,
+      address: string,
+      account: string | Signer
+    ): Contract;
+  }
+```
 
-Take a look at `README-TEMPLATE.md` for an example of what a Buidler plugin's
-README should look like.
+- `deploySetup`: defines the nmr token, registries and factories of your erasure setup.
+- `getDeployedAddresses`: a function that retrieves the addresses of a given contract name.
+- `getDeployedContracts`: a function that retrieves the contracts of a given contract name.
+- `saveDeployedContract`: store a contract's address into the deployment state.
+- `getContractInstance`: retrieves an instance of a contract attached to an address
+
+
+## Configuration
+
+<_A description of each extension to the BuidlerConfig or to its fields_>
+
+This plugin extends the `BuidlerConfig`'s `ProjectPaths` object with an optional 
+`newPath` field.
+
+This is an example of how to set it:
+
+```js
+module.exports = {
+  paths: {
+    newPath: "./new-path"
+  }
+};
+```
+
+## Usage
+
+You must copy the erasure protocol contracts into your sources folder. You can do it manually:
+```bash
+cp node_modules/erasure-protocol/contracts/**/*.sol <source_folder>
+```
+Or use a (temporal) task I've created to do this:
+```bash
+npx buidler erasure:copy-contracts
+```
+I'm working on a solution to avoid this.
+
+
+## TypeScript support
+
+<_This section is needed if you are extending types in your plugin_>
+
+You need to add this to your `tsconfig.json`'s `files` array: 
+`"node_modules/<npm package name>/src/type-extensions.d.ts"`
