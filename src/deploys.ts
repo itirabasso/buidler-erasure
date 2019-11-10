@@ -2,7 +2,8 @@ import { extendEnvironment, task, usePlugin } from "@nomiclabs/buidler/config";
 import {
   ensurePluginLoadedWithUsePlugin,
   lazyObject,
-  readArtifact
+  readArtifact,
+  readArtifactSync
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
@@ -55,7 +56,8 @@ task("deploy")
 
 extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
   env.deployments = lazyObject(() => {
-    const getChainId = createChainIdGetter(env.ethereum);
+    const getChainId = createChainIdGetter(env.ethers.provider);
+    // const getChainId = () => 99999;
     return {
       getDeployedAddresses: async (name: string): Promise<string[]> => {
         const state = readState();
@@ -81,7 +83,7 @@ extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
         // console.log("Found these addresses for", name, addresses);
 
         const factory = await env.ethers.getContract(name);
-        const artifact = await readArtifact(env.config.paths.artifacts, name);
+        const artifact = readArtifactSync(env.config.paths.artifacts, name);
 
         // TODO : should use deployedBytecode instead?
         if (artifact.bytecode !== factory.bytecode) {
@@ -92,11 +94,7 @@ extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
           );
         }
 
-        return Promise.all(
-          addresses.map((addr: string) => {
-            return factory.attach(addr);
-          })
-        );
+        return addresses.map((addr: string) => factory.attach(addr));
       },
 
       saveDeployedContract: async (

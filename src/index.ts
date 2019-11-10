@@ -103,18 +103,6 @@ export default function() {
     }
   );
 
-  task(
-    "erasure:create-instance",
-    "Creates a new instance from a factory"
-  ).setAction(async (args: any, { ethers }: any) => {
-    const { factory, params, values, provider } = args;
-    const tx = await factory.create(
-      abiEncodeWithSelector("initialize", params, values)
-    );
-    // todo: missing name
-    return ethers.provider.getTransactionReceipt(tx.hash);
-  });
-
   internalTask("erasure:deploy-factory").setAction(
     async (
       {
@@ -129,7 +117,7 @@ export default function() {
         registry
       ))[0];
 
-      // console.log("deploying template");
+      // console.log("deploying template", registryInstance.address);
       const templateContract = await run("erasure:deploy-contract", {
         name: template,
         params: [],
@@ -159,16 +147,49 @@ export default function() {
       ) => {
         console.log("Deploying Factories");
 
-        const fs = Object.entries(factories).reduce(
-          async (acc: any, [name, { config }]: any) => ({
-            ...acc,
-            [name]: await run("erasure:deploy-factory", {
-              ...config,
-              signer: deployer
-            })
-          }),
-          {}
-        );
+        const fs = {};
+
+        // const fps = Object.entries(factories).map(([name, { config }]) =>
+        //   run("erasure:deploy-factory", {
+        //     ...config,
+        //     signer: deployer
+        //   })
+        // );
+
+        Object.assign(fs, {
+          SimpleGriefing: await run("erasure:deploy-factory", {
+            ...factories.SimpleGriefing.config,
+            signer: deployer
+          })
+        });
+        Object.assign(fs, {
+          CountdownGriefing: await run("erasure:deploy-factory", {
+            ...factories.CountdownGriefing.config,
+            signer: deployer
+          })
+        });
+        Object.assign(fs, {
+          Feed: await run("erasure:deploy-factory", {
+            ...factories.Feed.config,
+            signer: deployer
+          })
+        });
+        Object.assign(fs, {
+          Post: await run("erasure:deploy-factory", {
+            ...factories.Post.config,
+            signer: deployer
+          })
+        });
+        // const fs = Object.entries(factories).reduce(
+        //   async (acc: any, [name, { config }]: any) => ({
+        //     ...acc,
+        //     [name]: await run("erasure:deploy-factory", {
+        //       ...config,
+        //       signer: deployer
+        //     })
+        //   }),
+        //   {}
+        // );
         return fs;
       }
     );
@@ -186,15 +207,30 @@ export default function() {
       ) => {
         console.log("Deploying Registries");
 
-        const rs = await Promise.all(
-          Object.keys(registries).map(name =>
-            run("erasure:deploy-contract", {
-              name,
-              params: [],
-              signer: deployer
-            })
-          )
-        );
+        const rs = {};
+        Object.assign(rs, {
+          Erasure_Agreements: await run("erasure:deploy-contract", {
+            name: "Erasure_Agreements",
+            params: [],
+            signer: deployer
+          })
+        });
+        Object.assign(rs, {
+          Erasure_Agreements: await run("erasure:deploy-contract", {
+            name: "Erasure_Posts",
+            params: [],
+            signer: deployer
+          })
+        });
+        // const rs = await Promise.all(
+        //   Object.keys(registries).map(name =>
+        //     run("erasure:deploy-contract", {
+        //       name,
+        //       params: [],
+        //       signer: deployer
+        //     })
+        //   )
+        // );
 
         return rs;
       }
@@ -253,10 +289,10 @@ export default function() {
         const setup: any =
           setupFile === undefined ? getDefaultSetup() : setupFile;
 
-        await run("erasure:deploy-numerai", {
-          deployer: nmrSigner,
-          nmr: setup.numerai
-        });
+        // await run("erasure:deploy-numerai", {
+        //   deployer,
+        //   nmr: setup.numerai
+        // });
         await run("erasure:deploy-registries", {
           deployer,
           registries: setup.registries
@@ -265,83 +301,21 @@ export default function() {
           deployer,
           factories: setup.factories
         });
-
-        // TODO: move this somewhere else
-        console.log("Create Test Instances");
-
-        // const userAddress = deployer._address;
-        // const multihash = createMultihashSha256("multihash");
-        // const hash = ethers.utils.keccak256(hexlify("multihash"));
-
-        // console.log("userAddress:", userAddress);
-        // console.log("multihash:", multihash);
-        // console.log("hash:", hash);
-
-        // await run("create-instance", {
-        //   factory: c.Post.factory,
-        //   params: ["address", "bytes", "bytes"],
-        //   values: [userAddress, multihash, multihash]
-        // });
-
-        // const receipt = await run("create-instance", {
-        //   factory: c.Feed.factory,
-        //   params: ["address", "bytes", "bytes"],
-        //   values: [userAddress, multihash, multihash]
-        // });
-
-        // c.Feed.wrap = await getWrapFromTx(receipt, c.Feed, deployer);
-
-        // const submitHash = async (entity: any, hash: any) => {
-        //   const tx = await entity.wrap.submitHash(hash);
-        //   const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-        //   const interface: any = new ethers.utils.Interface(
-        //     entity.templateArtifact.abi
-        //   );
-        //   for (log of receipt.logs) {
-        //     const event = interface.parseLog(log);
-        //     if (event !== null && event.name === "HashSubmitted") {
-        //       console.log("Hashes:", event.values.hash, hash);
-        //       // assert.equal(event.values.hash, hash);
-        //     }
-        //     console.log(`submitHash() | ${receipt.gasUsed} gas | Feed`);
-        //   }
-        // };
-        // await submitHash(c.Feed, hash);
-
-        // await run("create-instance", {
-        //   factory: c.SimpleGriefing.factory,
-        //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
-        //   values: [
-        //     userAddress,
-        //     userAddress,
-        //     userAddress,
-        //     ethers.utils.parseEther("1"),
-        //     2,
-        //     "0x0"
-        //   ]
-        // });
-
-        // await run("create-instance", {
-        //   factory: c.CountdownGriefing.factory,
-        //   params: [
-        //     "address",
-        //     "address",
-        //     "address",
-        //     "uint256",
-        //     "uint8",
-        //     "uint256",
-        //     "bytes"
-        //   ],
-        //   values: [
-        //     userAddress,
-        //     userAddress,
-        //     userAddress,
-        //     ethers.utils.parseEther("1"),
-        //     2,
-        //     100000000,
-        //     "0x0"
-        //   ]
-        // });
       }
     );
+
+  task(
+    "erasure:create-instance",
+    "Creates a new instance from a factory"
+  ).setAction(async (args: any, { ethers }: any) => {
+    const { factory, params, values, provider } = args;
+    const tx = await factory.create(
+      abiEncodeWithSelector("initialize", params, values)
+    );
+    // todo: missing name
+    return ethers.provider.getTransactionReceipt(tx.hash);
+  });
 }
+// TODO: move this somewhere else
+// console.log("Create Test Instances");
+
