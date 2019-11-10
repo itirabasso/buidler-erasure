@@ -1,4 +1,5 @@
 import { extendEnvironment, task, usePlugin } from "@nomiclabs/buidler/config";
+import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
 import {
   ensurePluginLoadedWithUsePlugin,
   lazyObject,
@@ -6,8 +7,6 @@ import {
   readArtifactSync
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
-
 import { Contract } from "ethers";
 import { existsSync } from "fs";
 import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";

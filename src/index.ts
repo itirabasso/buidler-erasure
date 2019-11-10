@@ -1,13 +1,17 @@
-import { internalTask, task, usePlugin } from "@nomiclabs/buidler/config";
+import {
+  internalTask,
+  task,
+  usePlugin,
+  types
+} from "@nomiclabs/buidler/config";
 import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
+import { Contract, utils } from "ethers";
 
 import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
-import { utils, ContractFactory, Contract } from "ethers";
 
 // @ts-ignore
-
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
@@ -258,103 +262,115 @@ export default function() {
 
       const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
 
+      let contract;
       for (const log of receipt.logs) {
         const event = factory.interface.parseLog(log);
         if (event !== null && event.name === "InstanceCreated") {
-          return new Contract(
+          contract = new Contract(
             event.values.instance,
             template.interface.abi,
             factory.signer
           );
         }
       }
+      return contract;
     }
   );
+
+  task("erasure:create-agreement", "Creates an Simple Agreement")
+    .addParam("operator", "Agreement's operator")
+    .addParam("staker", "Agreement's staker")
+    .addParam("counterparty", "Agreement's counterparty")
+    .addParam("ratio", "Agreement's ratio value", "1") // throw if I don't specify param's type.
+    .addParam("ratioType", "Agreement's ratio type", 2, types.int)
+    .addParam("metadata", "Agreement's metadata", "0x0")
+    .addOptionalParam("countdown", "Optional. Agreement's countdown")
+    .setAction(async (args, { run, ethers }: any) => {
+      const {
+        operator,
+        staker,
+        counterparty,
+        ratio,
+        ratioType,
+        metadata,
+        countdown
+      } = args;
+
+      // TODO : use countdown to differentiate between Simple and Countdown Griefing
+
+      const griefing = await run("erasure:create-instance", {
+        factoryName: "SimpleGriefing_Factory",
+        templateName: "SimpleGriefing",
+        params: ["address", "address", "address", "uint256", "uint8", "bytes"],
+        values: [
+          operator._address,
+          staker._address,
+          counterparty._address,
+          utils.parseEther(ratio),
+          ratioType,
+          metadata
+        ]
+      });
+
+      return griefing;
+    });
+
+  task("erasure:agreement-stake", "Stake NMR in an agreement")
+    .addParam("agreement", "Agreement's address")
+    .addParam("currentStake", "Current agreement's stake", 0, types.int)
+    .addParam("amountToAdd", "Amount to add to the stake", 0, types.int)
+    .setAction(async (args, { run, ethers }: any) => {
+      const { agreement, currentStake, amountToAdd } = args;
+
+      // const griefing = await run("erasure:create-instance", {
+      //   factoryName: "SimpleGriefing_Factory",
+      //   templateName: "SimpleGriefing",
+      //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
+      //   values: []
+      // });
+
+      return griefing;
+    });
+
   task("erasure:bleep").setAction(
     async (
       args: any,
-      { ethers, run }: BuidlerRuntimeEnvironment | any
+      { ethers, run, deployments }: BuidlerRuntimeEnvironment | any
     ) => {
       await run("erasure:deploy-full");
-      const signers = await ethers.signers();
-      const deployer = signers[0];
-      const userAddress = deployer._address;
+
+      const [deployer, operator, staker, counterparty] = await ethers.signers();
+
       const multihash = createMultihashSha256("multihash");
       const hash = utils.keccak256(hexlify("multihash"));
-
-      // console.log("userAddress:", userAddress);
-      // console.log("multihash:", multihash);
-      // console.log("hash:", hash);
 
       const post = await run("erasure:create-instance", {
         factoryName: "Post_Factory",
         templateName: "Post",
         params: ["address", "bytes", "bytes"],
-        values: [userAddress, multihash, multihash]
+        values: [operator._address, multihash, multihash]
       });
       const feed = await run("erasure:create-instance", {
         factoryName: "Feed_Factory",
         templateName: "Feed",
         params: ["address", "bytes", "bytes"],
-        values: [userAddress, multihash, multihash]
+        values: [operator._address, multihash, multihash]
       });
-      console.log('beeeeep', hash)
-      const tx = feed.submitHash(hash);
+
+      const tx = await feed.submitHash(hash);
       const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-      const event = receipt.logs[0]
-      console.log(event);
-      // const submitHash = async (entity: any, hash: any) => {
-      //   const tx = await entity.wrap.submitHash(hash);
-      //   const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-      //   const interface: any = new ethers.utils.Interface(
-      //     entity.templateArtifact.abi
-      //   );
-      //   for (log of receipt.logs) {
-      //     const event = interface.parseLog(log);
-      //     if (event !== null && event.name === "HashSubmitted") {
-      //       console.log("Hashes:", event.values.hash, hash);
-      //       // assert.equal(event.values.hash, hash);
-      //     }
-      //     console.log(`submitHash() | ${receipt.gasUsed} gas | Feed`);
-      //   }
-      // };
-      // await submitHash(c.Feed, hash);
-      // await run("create-instance", {
-      //   factory: c.SimpleGriefing.factory,
-      //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
-      //   values: [
-      //     userAddress,
-      //     userAddress,
-      //     userAddress,
-      //     ethers.utils.parseEther("1"),
-      //     2,
-      //     "0x0"
-      //   ]
-      // });
-      // await run("create-instance", {
-      //   factory: c.CountdownGriefing.factory,
-      //   params: [
-      //     "address",
-      //     "address",
-      //     "address",
-      //     "uint256",
-      //     "uint8",
-      //     "uint256",
-      //     "bytes"
-      //   ],
-      //   values: [
-      //     userAddress,
-      //     userAddress,
-      //     userAddress,
-      //     ethers.utils.parseEther("1"),
-      //     2,
-      //     100000000,
-      //     "0x0"
-      //   ]
-      // });
-      //       }
-      //     );
-      // }
+      console.log(hash, feed.interface.parseLog(receipt.logs[0]).values.hash);
+
+      const agreement = await run("erasure:create-agreement", {
+        operator,
+        staker,
+        counterparty,
+        ratio: "1",
+        ratioType: 2,
+        metadata: "0x0"
+      });
+
+      console.log(Object.keys(agreement));
     }
   );
 }
