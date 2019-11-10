@@ -5,13 +5,11 @@ import { Contract, Signer } from "ethers";
 
 declare module "@nomiclabs/buidler/types" {
   export interface BuidlerRuntimeEnvironment {
-    deployments: {
+    erasure: {
+      deploySetup: ErasureDeploySetup;
       getDeployedAddresses(name: string): Promise<string[]>;
       getDeployedContracts(contractName: string): Promise<Contract[]>;
       saveDeployedContract(name: string, instance: any): void;
-      deploySetup: ErasureDeploySetup;
-    };
-    erasure: {
       getContractInstance(
         name: string,
         address: string,
