@@ -18,7 +18,7 @@ import { Contract, ContractFactory, Signer, utils } from "ethers";
 
 import "./deploys";
 import { ErasureDeploySetup } from "./erasureSetup";
-import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
+import { abiEncodeWithSelector } from "./utils";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -76,9 +76,9 @@ export default function() {
       }: { factory: string; template: string; registry: any; signer: any },
       { run, deployments }: BuidlerRuntimeEnvironment
     ) => {
-      const registryInstance = (
-        await deployments.getDeployedContracts(registry)
-      )[0];
+      const registryInstance = (await deployments.getDeployedContracts(
+        registry
+      ))[0];
 
       // console.log("deploying template", registryInstance.address);
       const templateContract = await run("erasure:deploy-contract", {
@@ -224,12 +224,12 @@ export default function() {
         params: any[];
         values: any[];
       },
-      { ethers, deployments }: any
+      { ethers, deployments, erasure }: any
     ) => {
       const factory = (await deployments.getDeployedContracts(factoryName))[0];
-      const template = (
-        await deployments.getDeployedContracts(templateName)
-      )[0];
+      const template = (await deployments.getDeployedContracts(
+        templateName
+      ))[0];
 
       const tx = await factory.create(
         abiEncodeWithSelector("initialize", params, values)
@@ -260,7 +260,7 @@ export default function() {
     .addParam("ratioType", "Agreement's ratio type", 2, types.int)
     .addParam("metadata", "Agreement's metadata", "0x0")
     .addOptionalParam("countdown", "Optional. Agreement's countdown")
-    .setAction(async (args, { run, ethers }: any) => {
+    .setAction(async (args, { run }: any) => {
       const {
         operator,
         staker,
@@ -298,7 +298,7 @@ export default function() {
     .setAction(
       async (
         args,
-        { config, run, ethers, deployments }: BuidlerRuntimeEnvironment
+        { erasure, ethers, deployments }: BuidlerRuntimeEnvironment
       ) => {
         const { address, currentStake, amountToAdd, account } = args;
 
@@ -307,8 +307,7 @@ export default function() {
             ? (await ethers.signers())[0]
             : ethers.provider.getSigner(account);
 
-        // TODO : this can be part of buidler-ethers
-        const agreement = ethers.getContractInstance(
+        const agreement = erasure.getContractInstance(
           deployments.deploySetup.factories.SimpleGriefing.config.template,
           address,
           signer
@@ -320,82 +319,25 @@ export default function() {
       }
     );
 
-  task("erasure:test-task").setAction(
-    async (
-      args: any,
-      { run, deployments, ethers }: BuidlerRuntimeEnvironment
-    ) => {
-      // console.log(deployments.deploySetup.factories);
-      // return;
-      const [deployer, operator, staker, counterparty] = await ethers.signers();
-
-      const [nmr, registries, factories] = await run("erasure:deploy-full");
-      const minted = await nmr.mintMockTokens(
-        staker.getAddress(),
-        utils.parseEther("1000")
-      );
-
-      const multihash = createMultihashSha256("multihash");
-      const hash = utils.keccak256(hexlify("multihash"));
-
-      const post = await run("erasure:create-instance", {
-        factoryName: deployments.deploySetup.factories.Post.config.factory,
-        templateName: deployments.deploySetup.factories.Post.config.template,
-        params: ["address", "bytes", "bytes"],
-        values: [await operator.getAddress(), multihash, multihash]
-      });
-
-      // TODO : ok, it's way to lengthy but you can autocomplete it.
-      const feed = await run("erasure:create-instance", {
-        factoryName: deployments.deploySetup.factories.Feed.config.factory,
-        templateName: deployments.deploySetup.factories.Feed.config.template,
-        params: ["address", "bytes", "bytes"],
-        values: [await operator.getAddress(), multihash, multihash]
-      });
-
-      let tx = await feed.submitHash(hash);
-      const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-      if (receipt.logs !== undefined) {
-        const log = receipt.logs[0];
-        console.log(hash, feed.interface.parseLog(log).values.hash);
-      }
-
-      const agreement = await run("erasure:create-agreement", {
-        operator,
-        staker,
-        counterparty,
-        ratio: "1",
-        ratioType: 2,
-        metadata: "0x0"
-      });
-
-      tx = await run("erasure:stake", {
-        address: agreement.address,
-        currentStake: 0,
-        amountToAdd: 1,
-        account: await staker.getAddress()
-      });
-      console.log(tx);
-    }
-  );
-
   // TODO : should this go to buidler-ethers?
-  extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
-    env.ethers.getContractInstance = (
-      name: string,
-      address: string,
-      account: string | Signer
-    ): Contract => {
-      const signer =
-        typeof account === "string"
-          ? env.ethers.provider.getSigner(account)
-          : account;
-      const { abi, bytecode } = readArtifactSync(
-        env.config.paths.artifacts,
-        name
-      );
-      const factory = new ContractFactory(abi, bytecode, signer);
-      return factory.attach(address);
+  extendEnvironment((env: BuidlerRuntimeEnvironment) => {
+    env.erasure = {
+      getContractInstance: (
+        name: string,
+        address: string,
+        account: string | Signer
+      ): Contract => {
+        const signer =
+          typeof account === "string"
+            ? env.ethers.provider.getSigner(account)
+            : account;
+        const { abi, bytecode } = readArtifactSync(
+          env.config.paths.artifacts,
+          name
+        );
+        const factory = new ContractFactory(abi, bytecode, signer);
+        return factory.attach(address);
+      }
     };
   });
 }
