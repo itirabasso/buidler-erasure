@@ -10,6 +10,8 @@ import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract } from "ethers";
 import { existsSync } from "fs";
 import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
+import { defaultSetup } from "./defaultSetup";
+import { ErasureDeploySetup } from "./erasureSetup";
 
 usePlugin("@nomiclabs/buidler-ethers");
 
@@ -53,10 +55,11 @@ task("deploy")
     }
   );
 
-extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
+extendEnvironment((env: BuidlerRuntimeEnvironment) => {
   env.deployments = lazyObject(() => {
-    const getChainId = createChainIdGetter(env.ethers.provider);
+    const getChainId = createChainIdGetter((env as any).ethers.provider);
     // const getChainId = () => 99999;
+    const setup: ErasureDeploySetup = defaultSetup;
     return {
       getDeployedAddresses: async (name: string): Promise<string[]> => {
         const state = readState();
@@ -143,7 +146,8 @@ extendEnvironment((env: BuidlerRuntimeEnvironment & any) => {
         }
         // update state
         writeState(state);
-      }
+      },
+      deploySetup: setup
     };
   });
 });

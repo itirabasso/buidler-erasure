@@ -15,51 +15,13 @@ import { Contract, utils, Signer, ContractFactory } from "ethers";
 
 import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
+import { ErasureDeploySetup } from "./erasureSetup";
 
 // @ts-ignore
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
 export default function() {
-  function getDefaultSetup() {
-    return {
-      nmrToken: "MockNMR",
-      registries: {
-        Erasure_Agreements: {},
-        Erasure_Posts: {}
-      },
-      factories: {
-        SimpleGriefing: {
-          config: {
-            factory: "SimpleGriefing_Factory",
-            template: "SimpleGriefing",
-            registry: "Erasure_Agreements"
-          }
-        },
-        CountdownGriefing: {
-          config: {
-            factory: "CountdownGriefing_Factory",
-            template: "CountdownGriefing",
-            registry: "Erasure_Agreements"
-          }
-        },
-        Feed: {
-          config: {
-            factory: "Feed_Factory",
-            template: "Feed",
-            registry: "Erasure_Posts"
-          }
-        },
-        Post: {
-          config: {
-            factory: "Post_Factory",
-            template: "Post",
-            registry: "Erasure_Posts"
-          }
-        }
-      }
-    };
-  }
 
   internalTask("erasure:deploy").setAction(
     async (
@@ -213,13 +175,12 @@ export default function() {
     .setAction(
       async (
         { setupFile }: { setupFile: string | undefined },
-        { run, ethers }: any
+        { run, ethers, deployments }: BuidlerRuntimeEnvironment
       ) => {
         const signers = await ethers.signers();
         const deployer = signers[0];
 
-        const setup: any =
-          setupFile === undefined ? getDefaultSetup() : setupFile;
+        const setup: ErasureDeploySetup = deployments.deploySetup;
 
         const nmr = await run("erasure:deploy-numerai", {
           deployer,
@@ -326,32 +287,44 @@ export default function() {
     .addParam("currentStake", "Current agreement's stake", 0, types.int)
     .addParam("amountToAdd", "Amount to add to the stake", 0, types.int)
     .addOptionalParam("account", "The staker. Optional, account 0 by default")
-    .setAction(async (args, { config, run, ethers, deployments }: any) => {
-      const { address, currentStake, amountToAdd, account } = args;
+    .setAction(
+      async (
+        args,
+        { config, run, ethers, deployments }: BuidlerRuntimeEnvironment
+      ) => {
+        const { address, currentStake, amountToAdd, account } = args;
 
-      const signer =
-        account === undefined
-          ? (await ethers.signers())[0]
-          : ethers.provider.getSigner(account);
+        const signer =
+          account === undefined
+            ? (await ethers.signers())[0]
+            : ethers.provider.getSigner(account);
 
-      // TODO : this can be part of buidler-ethers
-      const agreement = ethers.getContractInstance(
-        "SimpleGriefing",
-        address,
-        signer
-      );
+        // TODO : this can be part of buidler-ethers
+        const agreement = ethers.getContractInstance(
+          deployments.deploySetup.factories.SimpleGriefing.config.template,
+          address,
+          signer
+        );
 
-      const tx = await agreement.increaseStake(currentStake, amountToAdd);
-      console.log(tx);
-      return tx;
-    });
+        const tx = await agreement.increaseStake(currentStake, amountToAdd);
+        console.log(tx);
+        return tx;
+      }
+    );
 
   task("erasure:test-task").setAction(
     async (
       args: any,
-      { ethers, run, deployments }: BuidlerRuntimeEnvironment | any
+      { run, deployments, ethers }: BuidlerRuntimeEnvironment
     ) => {
-      const [deployer, operator, staker, counterparty] = await ethers.signers();
+      // console.log(deployments.deploySetup.factories);
+      // return;
+      const [
+        deployer,
+        operator,
+        staker,
+        counterparty
+      ] = await (ethers as any).signers();
 
       const [nmr, registries, factories] = await run("erasure:deploy-full");
       const minted = await nmr.mintMockTokens(
@@ -363,19 +336,21 @@ export default function() {
       const hash = utils.keccak256(hexlify("multihash"));
 
       const post = await run("erasure:create-instance", {
-        factoryName: "Post_Factory",
-        templateName: "Post",
-        params: ["address", "bytes", "bytes"],
-        values: [operator._address, multihash, multihash]
-      });
-      const feed = await run("erasure:create-instance", {
-        factoryName: "Feed_Factory",
-        templateName: "Feed",
+        factoryName: deployments.deploySetup.factories.Post.config.factory,
+        templateName: deployments.deploySetup.factories.Post.config.template,
         params: ["address", "bytes", "bytes"],
         values: [operator._address, multihash, multihash]
       });
 
-      const tx = await feed.submitHash(hash);
+      // TODO : ok, it's way to lengthy but you can autocomplete it.
+      const feed = await run("erasure:create-instance", {
+        factoryName: deployments.deploySetup.factories.Feed.config.factory,
+        templateName: deployments.deploySetup.factories.Feed.config.template,
+        params: ["address", "bytes", "bytes"],
+        values: [operator._address, multihash, multihash]
+      });
+
+      let tx = await feed.submitHash(hash);
       const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
       console.log(hash, feed.interface.parseLog(receipt.logs[0]).values.hash);
 
@@ -388,7 +363,7 @@ export default function() {
         metadata: "0x0"
       });
 
-      const tx = await run("erasure:stake", {
+      tx = await run("erasure:stake", {
         address: agreement.address,
         currentStake: 0,
         amountToAdd: 1,
@@ -409,7 +384,6 @@ export default function() {
         env.config.paths.artifacts,
         name
       );
-
       const factory = new ContractFactory(abi, bytecode, signer);
       return factory.attach(address);
     };

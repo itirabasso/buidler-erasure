@@ -1,5 +1,5 @@
 import "@nomiclabs/buidler/types";
-import { ExampleBuidlerRuntimeEnvironmentField } from "./ExampleBuidlerRuntimeEnvironmentField";
+import { ErasureDeploySetup } from "./erasureSetup";
 import { Contract } from "ethers";
 
 // This file is used to extend Buidler's types. Most plugins contain a
@@ -10,9 +10,10 @@ declare module "@nomiclabs/buidler/types" {
   // This new field will be available in tasks' actions, scripts, and tests.
   export interface BuidlerRuntimeEnvironment {
     deployments: {
-      getDeployedAddresses(name: string): string[];
+      getDeployedAddresses(name: string): Promise<string[]>;
       getDeployedContracts(contractName: string): Promise<Contract[]>;
       saveDeployedContract(name: string, instance: any): void;
+      deploySetup: ErasureDeploySetup;
     };
   }
 

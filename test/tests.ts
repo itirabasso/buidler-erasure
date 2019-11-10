@@ -1,7 +1,7 @@
 // tslint:disable-next-line no-implicit-dependencies
 import { assert } from "chai";
 
-import { ExampleBuidlerRuntimeEnvironmentField } from "../src/ExampleBuidlerRuntimeEnvironmentField";
+import { ExampleBuidlerRuntimeEnvironmentField } from "./erasureSetup";
 
 import { useEnvironment } from "./helpers";
 
