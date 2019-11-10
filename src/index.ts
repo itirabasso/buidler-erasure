@@ -4,7 +4,7 @@ import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 
 import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
-import { utils } from "ethers";
+import { utils, ContractFactory, Contract } from "ethers";
 
 // @ts-ignore
 
@@ -129,48 +129,16 @@ export default function() {
         console.log("Deploying Factories");
 
         const fs = {};
+        for (const [name, factory] of Object.entries(factories)) {
+          const { config }: any = factory;
+          Object.assign(fs, {
+            [name]: await run("erasure:deploy-factory", {
+              ...config,
+              signer: deployer
+            })
+          });
+        }
 
-        // const fps = Object.entries(factories).map(([name, { config }]) =>
-        //   run("erasure:deploy-factory", {
-        //     ...config,
-        //     signer: deployer
-        //   })
-        // );
-
-        Object.assign(fs, {
-          SimpleGriefing: await run("erasure:deploy-factory", {
-            ...factories.SimpleGriefing.config,
-            signer: deployer
-          })
-        });
-        Object.assign(fs, {
-          CountdownGriefing: await run("erasure:deploy-factory", {
-            ...factories.CountdownGriefing.config,
-            signer: deployer
-          })
-        });
-        Object.assign(fs, {
-          Feed: await run("erasure:deploy-factory", {
-            ...factories.Feed.config,
-            signer: deployer
-          })
-        });
-        Object.assign(fs, {
-          Post: await run("erasure:deploy-factory", {
-            ...factories.Post.config,
-            signer: deployer
-          })
-        });
-        // const fs = Object.entries(factories).reduce(
-        //   async (acc: any, [name, { config }]: any) => ({
-        //     ...acc,
-        //     [name]: await run("erasure:deploy-factory", {
-        //       ...config,
-        //       signer: deployer
-        //     })
-        //   }),
-        //   {}
-        // );
         return fs;
       }
     );
@@ -189,36 +157,26 @@ export default function() {
         console.log("Deploying Registries");
 
         const rs = {};
-        Object.assign(rs, {
-          Erasure_Agreements: await run("erasure:deploy-contract", {
-            name: "Erasure_Agreements",
-            params: [],
-            signer: deployer
-          })
-        });
-        Object.assign(rs, {
-          Erasure_Agreements: await run("erasure:deploy-contract", {
-            name: "Erasure_Posts",
-            params: [],
-            signer: deployer
-          })
-        });
-        // const rs = await Promise.all(
-        //   Object.keys(registries).map(name =>
-        //     run("erasure:deploy-contract", {
-        //       name,
-        //       params: [],
-        //       signer: deployer
-        //     })
-        //   )
-        // );
+
+        for (const [name, _] of Object.entries(registries)) {
+          Object.assign(rs, {
+            [name]: await run("erasure:deploy-contract", {
+              name,
+              params: [],
+              signer: deployer
+            })
+          });
+        }
 
         return rs;
       }
     );
 
   // TODO : is sending balance to the nmrSigner really necessary?
-  internalTask("erasure:deploy-numerai", "Deploys the Numerai main contract").setAction(
+  internalTask(
+    "erasure:deploy-numerai",
+    "Deploys the Numerai main contract"
+  ).setAction(
     async (
       { deployer, nmr }: { deployer: any; nmr: string },
       { run, ethers }: any
@@ -240,21 +198,6 @@ export default function() {
       });
     }
   );
-
-  // const getWrapFromTx = (receipt, entity, signer) => {
-  //   // TODO : does the instance contains the ABI?
-  //   const interface = new ethers.utils.Interface(entity.factoryArtifact.abi);
-  //   for (log of receipt.logs) {
-  //     const event = interface.parseLog(log);
-  //     if (event !== null && event.name === "InstanceCreated") {
-  //       return new ethers.Contract(
-  //         event.values.instance,
-  //         entity.templateArtifact.abi,
-  //         signer
-  //       );
-  //     }
-  //   }
-  // };
 
   task("erasure:deploy-full", "Deploy the full platform")
     .addOptionalParam("setupFile", "The file that defines the deploy setup")
@@ -285,6 +228,7 @@ export default function() {
       }
     );
 
+  // TODO : This can receive the name of the _entity_ instead of the factory and template names.
   task(
     "erasure:create-instance",
     "Creates a new instance from a factory"
@@ -292,92 +236,127 @@ export default function() {
     async (
       {
         factoryName,
+        templateName,
         params,
         values
-      }: { factory: string; params: any[]; values: any[] },
-      { ethers }: any
+      }: {
+        factoryName: string;
+        templateName: string;
+        params: any[];
+        values: any[];
+      },
+      { ethers, deployments }: any
     ) => {
+      const factory = (await deployments.getDeployedContracts(factoryName))[0];
+      const template = (await deployments.getDeployedContracts(
+        templateName
+      ))[0];
+
       const tx = await factory.create(
         abiEncodeWithSelector("initialize", params, values)
       );
-      // todo: missing name
-      return ethers.provider.getTransactionReceipt(tx.hash);
+
+      const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+
+      for (const log of receipt.logs) {
+        const event = factory.interface.parseLog(log);
+        if (event !== null && event.name === "InstanceCreated") {
+          return new Contract(
+            event.values.instance,
+            template.interface.abi,
+            factory.signer
+          );
+        }
+      }
     }
   );
-  task("carlos").setAction(async (args: any, env: any) => {
-    const signers = await env.ethers.signers();
-    const deployer = signers[0];
-    const userAddress = deployer._address;
-    const multihash = createMultihashSha256("multihash");
-    const hash = utils.keccak256(hexlify("multihash"));
+  task("erasure:bleep").setAction(
+    async (
+      args: any,
+      { ethers, run }: BuidlerRuntimeEnvironment | any
+    ) => {
+      await run("erasure:deploy-full");
+      const signers = await ethers.signers();
+      const deployer = signers[0];
+      const userAddress = deployer._address;
+      const multihash = createMultihashSha256("multihash");
+      const hash = utils.keccak256(hexlify("multihash"));
 
-    // console.log("userAddress:", userAddress);
-    // console.log("multihash:", multihash);
-    // console.log("hash:", hash);
-    await run("create-instance", {
-      factory: c.Post.factory,
-      params: ["address", "bytes", "bytes"],
-      values: [userAddress, multihash, multihash]
-    });
-    // const receipt = await run("create-instance", {
-    //   factory: c.Feed.factory,
-    //   params: ["address", "bytes", "bytes"],
-    //   values: [userAddress, multihash, multihash]
-    // });
-    // c.Feed.wrap = await getWrapFromTx(receipt, c.Feed, deployer);
-    // const submitHash = async (entity: any, hash: any) => {
-    //   const tx = await entity.wrap.submitHash(hash);
-    //   const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-    //   const interface: any = new ethers.utils.Interface(
-    //     entity.templateArtifact.abi
-    //   );
-    //   for (log of receipt.logs) {
-    //     const event = interface.parseLog(log);
-    //     if (event !== null && event.name === "HashSubmitted") {
-    //       console.log("Hashes:", event.values.hash, hash);
-    //       // assert.equal(event.values.hash, hash);
-    //     }
-    //     console.log(`submitHash() | ${receipt.gasUsed} gas | Feed`);
-    //   }
-    // };
-    // await submitHash(c.Feed, hash);
-    // await run("create-instance", {
-    //   factory: c.SimpleGriefing.factory,
-    //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
-    //   values: [
-    //     userAddress,
-    //     userAddress,
-    //     userAddress,
-    //     ethers.utils.parseEther("1"),
-    //     2,
-    //     "0x0"
-    //   ]
-    // });
-    // await run("create-instance", {
-    //   factory: c.CountdownGriefing.factory,
-    //   params: [
-    //     "address",
-    //     "address",
-    //     "address",
-    //     "uint256",
-    //     "uint8",
-    //     "uint256",
-    //     "bytes"
-    //   ],
-    //   values: [
-    //     userAddress,
-    //     userAddress,
-    //     userAddress,
-    //     ethers.utils.parseEther("1"),
-    //     2,
-    //     100000000,
-    //     "0x0"
-    //   ]
-    // });
-    //       }
-    //     );
-    // }
-  });
+      // console.log("userAddress:", userAddress);
+      // console.log("multihash:", multihash);
+      // console.log("hash:", hash);
+
+      const post = await run("erasure:create-instance", {
+        factoryName: "Post_Factory",
+        templateName: "Post",
+        params: ["address", "bytes", "bytes"],
+        values: [userAddress, multihash, multihash]
+      });
+      const feed = await run("erasure:create-instance", {
+        factoryName: "Feed_Factory",
+        templateName: "Feed",
+        params: ["address", "bytes", "bytes"],
+        values: [userAddress, multihash, multihash]
+      });
+      console.log('beeeeep', hash)
+      const tx = feed.submitHash(hash);
+      const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      const event = receipt.logs[0]
+      console.log(event);
+      // const submitHash = async (entity: any, hash: any) => {
+      //   const tx = await entity.wrap.submitHash(hash);
+      //   const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      //   const interface: any = new ethers.utils.Interface(
+      //     entity.templateArtifact.abi
+      //   );
+      //   for (log of receipt.logs) {
+      //     const event = interface.parseLog(log);
+      //     if (event !== null && event.name === "HashSubmitted") {
+      //       console.log("Hashes:", event.values.hash, hash);
+      //       // assert.equal(event.values.hash, hash);
+      //     }
+      //     console.log(`submitHash() | ${receipt.gasUsed} gas | Feed`);
+      //   }
+      // };
+      // await submitHash(c.Feed, hash);
+      // await run("create-instance", {
+      //   factory: c.SimpleGriefing.factory,
+      //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
+      //   values: [
+      //     userAddress,
+      //     userAddress,
+      //     userAddress,
+      //     ethers.utils.parseEther("1"),
+      //     2,
+      //     "0x0"
+      //   ]
+      // });
+      // await run("create-instance", {
+      //   factory: c.CountdownGriefing.factory,
+      //   params: [
+      //     "address",
+      //     "address",
+      //     "address",
+      //     "uint256",
+      //     "uint8",
+      //     "uint256",
+      //     "bytes"
+      //   ],
+      //   values: [
+      //     userAddress,
+      //     userAddress,
+      //     userAddress,
+      //     ethers.utils.parseEther("1"),
+      //     2,
+      //     100000000,
+      //     "0x0"
+      //   ]
+      // });
+      //       }
+      //     );
+      // }
+    }
+  );
 }
 // TODO: move this somewhere else
 // console.log("Create Test Instances");

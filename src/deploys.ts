@@ -30,7 +30,7 @@ if (!existsSync(stateFilename)) {
 
 // TODO : it should receive the contracts that we want to clean
 task("clean", async (args: any, env: any, runSuper: any) => {
-  await runSuper();
+  // await runSuper();
   setInitialState();
   console.log("deploy clean");
 });
