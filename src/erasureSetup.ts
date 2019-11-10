@@ -16,6 +16,4 @@ export interface ErasureDeploySetup {
   nmrToken: string;
   registries: Record<Registries, Registry>;
   factories: Record<Factories, Factory>;
-  // registries: { [key: Registries]: Registry };
-  // factories: { [key: Factories]: Factory };
 }

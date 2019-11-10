@@ -207,7 +207,7 @@ export default function() {
       }
     );
 
-  // TODO : This can receive the name of the _entity_ instead of the factory and template names.
+  // TODO : This can receive the _entity_ instead of the factory and template names.
   task(
     "erasure:create-instance",
     "Creates a new instance from a factory"
@@ -224,7 +224,7 @@ export default function() {
         params: any[];
         values: any[];
       },
-      { ethers, deployments, erasure }: any
+      { ethers, deployments }: BuidlerRuntimeEnvironment
     ) => {
       const factory = (await deployments.getDeployedContracts(factoryName))[0];
       const template = (await deployments.getDeployedContracts(
@@ -237,18 +237,16 @@ export default function() {
 
       const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
 
-      let contract;
-      for (const log of receipt.logs) {
+      for (const log of receipt.logs!) {
         const event = factory.interface.parseLog(log);
         if (event !== null && event.name === "InstanceCreated") {
-          contract = new Contract(
+          return new Contract(
             event.values.instance,
             template.interface.abi,
             factory.signer
           );
         }
       }
-      return contract;
     }
   );
 
