@@ -4,6 +4,7 @@ import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 
 import "./deploys";
 import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
+import { utils } from "ethers";
 
 // @ts-ignore
 
@@ -50,26 +51,6 @@ export default function() {
       }
     };
   }
-  task("send-balance", async ({ from, to }, { ethers }: any) => {
-    // const defaultSigner = (await env.ethers.signers())[9];
-    // console.log(from, to)
-    // const defaultSigner = (await env.ethers.signers())[0];
-    const balance = await from.getBalance(from.address);
-    const gasPrice = await ethers.provider.getGasPrice();
-    // TODO : why doesn't work with 21000?
-    const gasLimit = 21001;
-    // console.log(balance.toString(), balance, gasPrice.toNumber(), balance.sub(gasPrice.mul(gasLimit)));
-    const value = balance.sub(gasPrice.mul(gasLimit));
-
-    await from.sendTransaction({
-      to,
-      value
-    });
-  });
-
-  task("erasure:compile", async (args, env) => {
-    await env.run("compile");
-  });
 
   internalTask("erasure:deploy").setAction(
     async (
@@ -237,7 +218,7 @@ export default function() {
     );
 
   // TODO : is sending balance to the nmrSigner really necessary?
-  task("erasure:deploy-numerai", "Deploys the Numerai main contract").setAction(
+  internalTask("erasure:deploy-numerai", "Deploys the Numerai main contract").setAction(
     async (
       { deployer, nmr }: { deployer: any; nmr: string },
       { run, ethers }: any
@@ -289,10 +270,10 @@ export default function() {
         const setup: any =
           setupFile === undefined ? getDefaultSetup() : setupFile;
 
-        // await run("erasure:deploy-numerai", {
-        //   deployer,
-        //   nmr: setup.numerai
-        // });
+        await run("erasure:deploy-numerai", {
+          deployer,
+          nmr: setup.numerai
+        });
         await run("erasure:deploy-registries", {
           deployer,
           registries: setup.registries
@@ -307,15 +288,96 @@ export default function() {
   task(
     "erasure:create-instance",
     "Creates a new instance from a factory"
-  ).setAction(async (args: any, { ethers }: any) => {
-    const { factory, params, values, provider } = args;
-    const tx = await factory.create(
-      abiEncodeWithSelector("initialize", params, values)
-    );
-    // todo: missing name
-    return ethers.provider.getTransactionReceipt(tx.hash);
+  ).setAction(
+    async (
+      {
+        factoryName,
+        params,
+        values
+      }: { factory: string; params: any[]; values: any[] },
+      { ethers }: any
+    ) => {
+      const tx = await factory.create(
+        abiEncodeWithSelector("initialize", params, values)
+      );
+      // todo: missing name
+      return ethers.provider.getTransactionReceipt(tx.hash);
+    }
+  );
+  task("carlos").setAction(async (args: any, env: any) => {
+    const signers = await env.ethers.signers();
+    const deployer = signers[0];
+    const userAddress = deployer._address;
+    const multihash = createMultihashSha256("multihash");
+    const hash = utils.keccak256(hexlify("multihash"));
+
+    // console.log("userAddress:", userAddress);
+    // console.log("multihash:", multihash);
+    // console.log("hash:", hash);
+    await run("create-instance", {
+      factory: c.Post.factory,
+      params: ["address", "bytes", "bytes"],
+      values: [userAddress, multihash, multihash]
+    });
+    // const receipt = await run("create-instance", {
+    //   factory: c.Feed.factory,
+    //   params: ["address", "bytes", "bytes"],
+    //   values: [userAddress, multihash, multihash]
+    // });
+    // c.Feed.wrap = await getWrapFromTx(receipt, c.Feed, deployer);
+    // const submitHash = async (entity: any, hash: any) => {
+    //   const tx = await entity.wrap.submitHash(hash);
+    //   const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+    //   const interface: any = new ethers.utils.Interface(
+    //     entity.templateArtifact.abi
+    //   );
+    //   for (log of receipt.logs) {
+    //     const event = interface.parseLog(log);
+    //     if (event !== null && event.name === "HashSubmitted") {
+    //       console.log("Hashes:", event.values.hash, hash);
+    //       // assert.equal(event.values.hash, hash);
+    //     }
+    //     console.log(`submitHash() | ${receipt.gasUsed} gas | Feed`);
+    //   }
+    // };
+    // await submitHash(c.Feed, hash);
+    // await run("create-instance", {
+    //   factory: c.SimpleGriefing.factory,
+    //   params: ["address", "address", "address", "uint256", "uint8", "bytes"],
+    //   values: [
+    //     userAddress,
+    //     userAddress,
+    //     userAddress,
+    //     ethers.utils.parseEther("1"),
+    //     2,
+    //     "0x0"
+    //   ]
+    // });
+    // await run("create-instance", {
+    //   factory: c.CountdownGriefing.factory,
+    //   params: [
+    //     "address",
+    //     "address",
+    //     "address",
+    //     "uint256",
+    //     "uint8",
+    //     "uint256",
+    //     "bytes"
+    //   ],
+    //   values: [
+    //     userAddress,
+    //     userAddress,
+    //     userAddress,
+    //     ethers.utils.parseEther("1"),
+    //     2,
+    //     100000000,
+    //     "0x0"
+    //   ]
+    // });
+    //       }
+    //     );
+    // }
   });
 }
 // TODO: move this somewhere else
 // console.log("Create Test Instances");
-
