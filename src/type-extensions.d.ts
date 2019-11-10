@@ -1,9 +1,9 @@
 import "@nomiclabs/buidler/types";
+import "@nomiclabs/buidler-ethers/src/type-extensions";
 import { ErasureDeploySetup } from "./erasureSetup";
 import { Contract } from "ethers";
 
 declare module "@nomiclabs/buidler/types" {
-
   export interface BuidlerRuntimeEnvironment {
     deployments: {
       getDeployedAddresses(name: string): Promise<string[]>;

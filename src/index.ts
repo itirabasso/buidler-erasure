@@ -3,25 +3,23 @@ import {
   TASK_TEST
 } from "@nomiclabs/buidler/builtin-tasks/task-names";
 import {
+  extendEnvironment,
   internalTask,
   task,
-  usePlugin,
   types,
-  extendEnvironment
+  usePlugin
 } from "@nomiclabs/buidler/config";
 import {
   ensurePluginLoadedWithUsePlugin,
-  readArtifact,
   readArtifactSync
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { Contract, utils, Signer, ContractFactory } from "ethers";
+import { Contract, ContractFactory, Signer, utils } from "ethers";
 
 import "./deploys";
-import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
 import { ErasureDeploySetup } from "./erasureSetup";
+import { abiEncodeWithSelector, createMultihashSha256, hexlify } from "./utils";
 
-// @ts-ignore
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
@@ -78,9 +76,9 @@ export default function() {
       }: { factory: string; template: string; registry: any; signer: any },
       { run, deployments }: BuidlerRuntimeEnvironment
     ) => {
-      const registryInstance = (await deployments.getDeployedContracts(
-        registry
-      ))[0];
+      const registryInstance = (
+        await deployments.getDeployedContracts(registry)
+      )[0];
 
       // console.log("deploying template", registryInstance.address);
       const templateContract = await run("erasure:deploy-contract", {
@@ -161,10 +159,7 @@ export default function() {
     "erasure:deploy-numerai",
     "Deploys the Numerai main contract"
   ).setAction(
-    async (
-      { deployer, nmr }: { deployer: any; nmr: string },
-      { run, ethers }: any
-    ) => {
+    async ({ deployer, nmr }: { deployer: any; nmr: string }, { run }: any) => {
       console.log("Deploying", nmr);
 
       // const from = (await ethers.signers())[2];
@@ -232,9 +227,9 @@ export default function() {
       { ethers, deployments }: any
     ) => {
       const factory = (await deployments.getDeployedContracts(factoryName))[0];
-      const template = (await deployments.getDeployedContracts(
-        templateName
-      ))[0];
+      const template = (
+        await deployments.getDeployedContracts(templateName)
+      )[0];
 
       const tx = await factory.create(
         abiEncodeWithSelector("initialize", params, values)
@@ -332,16 +327,11 @@ export default function() {
     ) => {
       // console.log(deployments.deploySetup.factories);
       // return;
-      const [
-        deployer,
-        operator,
-        staker,
-        counterparty
-      ] = await (ethers as any).signers();
+      const [deployer, operator, staker, counterparty] = await ethers.signers();
 
       const [nmr, registries, factories] = await run("erasure:deploy-full");
       const minted = await nmr.mintMockTokens(
-        staker._address,
+        staker.getAddress(),
         utils.parseEther("1000")
       );
 
@@ -352,7 +342,7 @@ export default function() {
         factoryName: deployments.deploySetup.factories.Post.config.factory,
         templateName: deployments.deploySetup.factories.Post.config.template,
         params: ["address", "bytes", "bytes"],
-        values: [operator._address, multihash, multihash]
+        values: [await operator.getAddress(), multihash, multihash]
       });
 
       // TODO : ok, it's way to lengthy but you can autocomplete it.
@@ -360,12 +350,15 @@ export default function() {
         factoryName: deployments.deploySetup.factories.Feed.config.factory,
         templateName: deployments.deploySetup.factories.Feed.config.template,
         params: ["address", "bytes", "bytes"],
-        values: [operator._address, multihash, multihash]
+        values: [await operator.getAddress(), multihash, multihash]
       });
 
       let tx = await feed.submitHash(hash);
       const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-      console.log(hash, feed.interface.parseLog(receipt.logs[0]).values.hash);
+      if (receipt.logs !== undefined) {
+        const log = receipt.logs[0];
+        console.log(hash, feed.interface.parseLog(log).values.hash);
+      }
 
       const agreement = await run("erasure:create-agreement", {
         operator,
@@ -380,7 +373,7 @@ export default function() {
         address: agreement.address,
         currentStake: 0,
         amountToAdd: 1,
-        account: staker._address
+        account: await staker.getAddress()
       });
       console.log(tx);
     }
@@ -391,8 +384,12 @@ export default function() {
     env.ethers.getContractInstance = (
       name: string,
       address: string,
-      signer: Signer
+      account: string | Signer
     ): Contract => {
+      const signer =
+        typeof account === "string"
+          ? env.ethers.provider.getSigner(account)
+          : account;
       const { abi, bytecode } = readArtifactSync(
         env.config.paths.artifacts,
         name

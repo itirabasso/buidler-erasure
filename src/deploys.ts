@@ -10,6 +10,7 @@ import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract } from "ethers";
 import { existsSync } from "fs";
 import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
+
 import { defaultSetup } from "./defaultSetup";
 import { ErasureDeploySetup } from "./erasureSetup";
 
@@ -57,7 +58,7 @@ task("deploy")
 
 extendEnvironment((env: BuidlerRuntimeEnvironment) => {
   env.deployments = lazyObject(() => {
-    const getChainId = createChainIdGetter((env as any).ethers.provider);
+    const getChainId = createChainIdGetter(env.ethereum);
     // const getChainId = () => 99999;
     const setup: ErasureDeploySetup = defaultSetup;
     return {
