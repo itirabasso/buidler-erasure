@@ -8,7 +8,8 @@ import {
   internalTask,
   task,
   types,
-  usePlugin
+  usePlugin,
+  extendConfig
 } from "@nomiclabs/buidler/config";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
 import {
@@ -60,12 +61,12 @@ export default function() {
     }
   );
   task(TASK_TEST, async (_, env, runSuper) => {
-    await env.run("deploy-full");
+    await env.run("erasure:deploy-full");
     await runSuper();
   });
 
   task(TASK_RUN, async (_, env, runSuper) => {
-    await env.run("deploy-full");
+    await env.run("erasure:deploy-full");
     await runSuper();
   });
 

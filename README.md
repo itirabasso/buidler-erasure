@@ -12,7 +12,7 @@ This plugin will help you integrate your dapp with the erasure protocol by letti
 This plugin relies on the smart contracts of the erasure protocol.
 
 ```bash
-npm install erasure-buidler ethers github:erasureprotocol/erasure-protocol#master
+npm install buidler-erasure ethers github:erasureprotocol/erasure-protocol#master
 ```
 And add the following statement to your `buidler.config.js`:
 
