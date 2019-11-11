@@ -1,3 +1,15 @@
+export const defaultNMR = "MockNMR";
+export const defaultFactories: string[] = [
+  "SimpleGriefing",
+  "CountdownGriefing",
+  "Post",
+  "Feed"
+];
+export const defaultRegistries: string[] = [
+  "Erasure_Agreements",
+  "Erasure_Posts"
+];
+
 export const defaultSetup = {
   nmrToken: "MockNMR",
   registries: {

@@ -20,18 +20,13 @@ import {
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract, ContractFactory, Signer, utils } from "ethers";
 import { existsSync } from "fs";
-import {
-  copy,
-  ensureDir,
-  ensureFileSync,
-  readJsonSync,
-  writeJSONSync
-} from "fs-extra";
-import { join } from "path";
+import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
 
 import { defaultSetup } from "./defaultSetup";
 import { ErasureDeploySetup } from "./erasureSetup";
 import { abiEncodeWithSelector } from "./utils";
+import { BigNumber } from "ethers/utils";
+
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
@@ -49,18 +44,6 @@ if (!existsSync(stateFilename)) {
 }
 
 export default function() {
-  internalTask(
-    "erasure:copy-contracts",
-    "Temporal task. Copy the erasure protocol contracts into your project's sources folder.",
-    async (_, { config }) => {
-      await ensureDir(config.paths.sources);
-      await copy(
-        join(config.paths.root, "/node_modules/erasure-protocol/contracts"),
-        config.paths.sources
-      );
-    }
-  );
-
   task(TASK_TEST, async (_, env, runSuper) => {
     await env.run("erasure:deploy-full");
     await runSuper();
@@ -76,145 +59,6 @@ export default function() {
     setInitialState();
     console.log("Deploy clean");
   });
-
-  internalTask("erasure:deploy").setAction(
-    async (
-      { name, params }: { name: string; params: any[] },
-      { ethers, erasure }: BuidlerRuntimeEnvironment
-    ) => {
-      // TODO : params' type check?
-      const contractParams = params === undefined ? [] : params;
-
-      // FIXME : override getContract function to receive a signer.
-      const contractFactory = await ethers.getContract(name);
-      const contract = await contractFactory.deploy(...contractParams);
-      await contract.deployed();
-
-      await erasure.saveDeployedContract(name, contract);
-      const receipt = await ethers.provider.getTransactionReceipt(
-        contract.deployTransaction.hash!
-      );
-      return [contract, receipt];
-    }
-  );
-
-  // TODO : this task seems unnecessary
-  internalTask("erasure:deploy-contract").setAction(
-    async (
-      { name, params, signer }: { name: string; params: any[]; signer: any },
-      { run }: BuidlerRuntimeEnvironment
-    ) => {
-      // console.log("deploy:deploy-contract", name, params);
-      const [contract, _] = await run("erasure:deploy", {
-        name,
-        params,
-        signer
-      });
-      return contract;
-    }
-  );
-
-  internalTask("erasure:deploy-factory").setAction(
-    async (
-      {
-        factory,
-        template,
-        registry,
-        signer
-      }: { factory: string; template: string; registry: any; signer: any },
-      { run, erasure }: BuidlerRuntimeEnvironment
-    ) => {
-      const registryInstance = (
-        await erasure.getDeployedContracts(registry)
-      )[0];
-
-      // console.log("deploying template", registryInstance.address);
-      const templateContract = await run("erasure:deploy-contract", {
-        name: template,
-        params: [],
-        signer
-      });
-      // console.log("deploying factory", factory);
-      const factoryContract = await run("erasure:deploy-contract", {
-        name: factory,
-        params: [registryInstance.address, templateContract.address],
-        signer
-      });
-      await registryInstance.addFactory(factoryContract.address, "0x");
-      return [templateContract, factoryContract];
-    }
-  );
-
-  internalTask("erasure:deploy-factories")
-    .addParam(
-      "factories",
-      "List of factories name to deploy (separated by comma)"
-    )
-    .addParam("deployer")
-    .setAction(
-      async (
-        { deployer, factories }: { deployer: any; factories: any },
-        { run }: BuidlerRuntimeEnvironment
-      ) => {
-        console.log("Deploying Factories");
-
-        const fs = {};
-        for (const [name, factory] of Object.entries(factories)) {
-          const { config }: any = factory;
-          Object.assign(fs, {
-            [name]: await run("erasure:deploy-factory", {
-              ...config,
-              signer: deployer
-            })
-          });
-        }
-
-        return fs;
-      }
-    );
-
-  internalTask("erasure:deploy-registries")
-    .addParam(
-      "registries",
-      "List of registries name to deploy (separated by comma)"
-    )
-    .addParam("deployer")
-    .setAction(
-      async (
-        { deployer, registries }: { deployer: any; registries: any },
-        { run }: BuidlerRuntimeEnvironment
-      ) => {
-        console.log("Deploying Registries");
-
-        const rs = {};
-
-        for (const [name, _] of Object.entries(registries)) {
-          Object.assign(rs, {
-            [name]: await run("erasure:deploy-contract", {
-              name,
-              params: [],
-              signer: deployer
-            })
-          });
-        }
-
-        return rs;
-      }
-    );
-
-  internalTask(
-    "erasure:deploy-numerai",
-    "Deploys the Numerai main contract"
-  ).setAction(
-    async ({ deployer, nmr }: { deployer: any; nmr: string }, { run }: any) => {
-      console.log("Deploying", nmr);
-      return run("erasure:deploy-contract", {
-        name: nmr,
-        params: [],
-        signer: deployer
-      });
-    }
-  );
 
   task("erasure:deploy-full", "Deploy the full platform")
     .addOptionalParam("setupFile", "The file that defines the deploy setup")
@@ -246,7 +90,6 @@ export default function() {
       }
     );
 
-  // TODO : This can receive the _entity_ instead of the factory and template names.
   task(
     "erasure:create-instance",
     "Creates a new instance from a factory"
@@ -263,39 +106,21 @@ export default function() {
         params: any[];
         values: any[];
       },
-      { ethers, erasure }: BuidlerRuntimeEnvironment
+      { erasure }: BuidlerRuntimeEnvironment
     ) => {
-      const factory = (await erasure.getDeployedContracts(factoryName))[0];
-      const template = (await erasure.getDeployedContracts(templateName))[0];
-
-      const tx = await factory.create(
-        abiEncodeWithSelector("initialize", params, values)
-      );
-
-      const receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-
-      for (const log of receipt.logs!) {
-        const event = factory.interface.parseLog(log);
-        if (event !== null && event.name === "InstanceCreated") {
-          return new Contract(
-            event.values.instance,
-            template.interface.abi,
-            factory.signer
-          );
-        }
-      }
+      return erasure.createInstance(factoryName, templateName, params, values);
     }
   );
 
   task("erasure:create-agreement", "Creates an Simple Agreement")
-    .addParam("operator", "Agreement's operator")
-    .addParam("staker", "Agreement's staker")
-    .addParam("counterparty", "Agreement's counterparty")
+    .addParam("operator", "Agreement's operator address")
+    .addParam("staker", "Agreement's staker address")
+    .addParam("counterparty", "Agreement's counterparty address")
     .addParam("ratio", "Agreement's ratio value", "1") // it throws if I don't specify param's type.
     .addParam("ratioType", "Agreement's ratio type", 2, types.int)
     .addParam("metadata", "Agreement's metadata", "0x0")
     .addOptionalParam("countdown", "Optional. Agreement's countdown")
-    .setAction(async (args, { run }: BuidlerRuntimeEnvironment) => {
+    .setAction(async (args, { erasure }: BuidlerRuntimeEnvironment) => {
       const {
         operator,
         staker,
@@ -305,23 +130,15 @@ export default function() {
         metadata,
         countdown
       } = args;
-
-      // TODO : use countdown to differentiate between Simple and Countdown Griefing
-
-      const griefing = await run("erasure:create-instance", {
-        factoryName: "SimpleGriefing_Factory",
-        templateName: "SimpleGriefing",
-        params: ["address", "address", "address", "uint256", "uint8", "bytes"],
-        values: [
-          operator._address,
-          staker._address,
-          counterparty._address,
-          utils.parseEther(ratio),
-          ratioType,
-          metadata
-        ]
-      });
-
+      const griefing = await erasure.createAgreement(
+        operator,
+        staker,
+        counterparty,
+        utils.parseEther(ratio),
+        ratioType,
+        metadata,
+        countdown
+      );
       return griefing;
     });
 
@@ -329,28 +146,28 @@ export default function() {
     .addParam("address", "Agreement's address")
     .addParam("currentStake", "Current agreement's stake", 0, types.int)
     .addParam("amountToAdd", "Amount to add to the stake", 0, types.int)
-    .addOptionalParam("account", "The staker. Optional, account 0 by default")
+    .addOptionalParam("account", "Optional. The staker. Account 0 by default")
     .setAction(async (args, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
       const { address, currentStake, amountToAdd, account } = args;
 
-      const signer =
-        account === undefined
-          ? (await ethers.signers())[0]
-          : ethers.provider.getSigner(account);
-
-      const agreement = erasure.getContractInstance(
-        // it's a little bit lengthy but you can autocomplete it.
-        erasure.deploySetup.factories.SimpleGriefing.config.template,
+      const tx = await erasure.stake(
         address,
-        signer
+        currentStake,
+        amountToAdd,
+        account
       );
-
-      const tx = await agreement.increaseStake(currentStake, amountToAdd);
-      console.log(tx);
       return tx;
     });
 
   extendEnvironment((env: BuidlerRuntimeEnvironment) => {
+    const getSigner = async (account?: Signer | string) => {
+      return account === undefined
+        ? (await env.ethers.signers())[0]
+        : typeof account === "string"
+        ? env.ethers.provider.getSigner(account)
+        : account;
+    };
+
     env.erasure = lazyObject(() => {
       const getChainId = createChainIdGetter(env.ethereum);
       const setup: ErasureDeploySetup = defaultSetup;
@@ -445,6 +262,7 @@ export default function() {
           // update state
           writeState(state);
         },
+
         getContractInstance: (
           name: string,
           address: string,
@@ -460,6 +278,147 @@ export default function() {
           );
           const factory = new ContractFactory(abi, bytecode, signer);
           return factory.attach(address);
+        },
+
+        // Creates an instance from a Factory.
+        createInstance: async (
+          factory: any, // Contract | string.
+          template: any, // template/factory could be automatically resolved.
+          params: any[],
+          values: any[]
+        ): Promise<Contract> => {
+          const factoryContract = (
+            await env.erasure.getDeployedContracts(factory)
+          )[0];
+          const templateContract = (
+            await env.erasure.getDeployedContracts(template)
+          )[0];
+
+          const tx = await factoryContract.create(
+            abiEncodeWithSelector("initialize", params, values)
+          );
+
+          const receipt = await env.ethers.provider.getTransactionReceipt(
+            tx.hash
+          );
+          for (const log of receipt.logs!) {
+            const event = factory.interface.parseLog(log);
+            if (event !== null && event.name === "InstanceCreated") {
+              return new Contract(
+                event.values.instance,
+                templateContract.interface.abi,
+                factoryContract.signer
+              );
+            }
+          }
+
+          throw new Error("Fail to create instance");
+        },
+
+        // Creates a agreement
+        createAgreement: async (
+          operator: Signer | string,
+          staker: Signer | string,
+          counterparty: Signer | string,
+          ratio: number | BigNumber,
+          ratioType: 1 | 2 | 3, // TODO : define a type for this
+          metadata: string,
+          countdown?: number
+        ): Promise<Contract> => {
+          const { factories } = env.erasure.deploySetup;
+
+          const agreementType =
+            countdown === undefined
+              ? factories.SimpleGriefing
+              : factories.CountdownGriefing;
+
+          const factory = agreementType.config.factory;
+          const template = agreementType.config.template;
+
+          const params = [
+            "address",
+            "address",
+            "address",
+            "uint256",
+            "uint8",
+            "bytes"
+          ];
+          const values = [
+            operator,
+            staker,
+            counterparty,
+            ratio,
+            ratioType,
+            metadata
+          ];
+          const agreement = env.erasure.createInstance(
+            factory,
+            template,
+            params,
+            values
+          );
+          return agreement;
+        },
+
+        // Stake NMR in an agreement
+        stake: async (
+          agreement: Contract | string,
+          currentStake: number,
+          amountToAdd: number,
+          account?: Signer | string
+        ): Promise<any> => {
+          const signer = await getSigner(account);
+
+          let contract;
+          if (typeof agreement === "string") {
+            contract = env.erasure.getContractInstance(
+              // it's a little bit lengthy but you can autocomplete it.
+              env.erasure.deploySetup.factories.SimpleGriefing.config.template,
+              agreement,
+              signer
+            );
+          } else {
+            contract = agreement;
+          }
+          const tx = await contract.increaseStake(currentStake, amountToAdd);
+          console.log(tx);
+          return tx;
+        },
+
+        punish: async (
+          agreementAddress: string,
+          currentStake: number,
+          punishment: number,
+          message: string = "0x0",
+          account?: Signer | string
+        ): Promise<number> => {
+          const signer = await getSigner(account);
+          const agreement = env.erasure.getContractInstance(
+            // it's a little bit lengthy but you can autocomplete it.
+            env.erasure.deploySetup.factories.SimpleGriefing.config.template,
+            agreementAddress,
+            signer
+          );
+          const tx = await agreement.punish(currentStake, punishment, message);
+          console.log(tx);
+          return tx;
+        },
+        reward: async (
+          agreementAddress: string,
+          currentStake: number,
+          amountToAdd: number,
+          account?: Signer | string
+        ): Promise<void> => {
+          const signer = await getSigner(account);
+          const agreement = env.erasure.getContractInstance(
+            // it's a little bit lengthy but you can autocomplete it.
+            env.erasure.deploySetup.factories.SimpleGriefing.config.template,
+            agreementAddress,
+            signer
+          );
+          const tx = await agreement.reward(currentStake, amountToAdd);
+          console.log(tx);
+          return tx;
         }
       };
     });
