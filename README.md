@@ -5,7 +5,7 @@ Buidler plugin for Erasure protocol
 
 ## What
 
-This plugin will help you integrate your dapp with the erasure protocol by letting you easily invoke erasure's contracts and interact with them.
+This plugin helps you integrate your dapp with the erasure protocol by letting you easily consume erasure's contracts and interact with them.
 
 ## Installation
 

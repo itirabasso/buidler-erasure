@@ -13,6 +13,5 @@ module.exports = {
   paths: {
     sources: __dirname + "/contracts",
     artifacts: __dirname + "/artifacts"
-
   }
 };
