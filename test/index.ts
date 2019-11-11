@@ -9,28 +9,12 @@ describe("Integration tests examples", function() {
     useEnvironment(__dirname + "/buidler-project");
 
     it.skip("erasure contracts should have been deployed", async function() {
-      // console.log(this.env);
-      // console.log((this.env as any)._extenders[0]);
-      console.log(Object.keys(this.env));
-      // console.log(Object.keys(this.env.deployments));
+      // contracts are already deployed because we overwrite the task test.
       const setup = this.env.erasure.deploySetup;
-      // setup.nmrToken
       const nmr = (
         await this.env.erasure.getDeployedContracts(setup.nmrToken)
       )[0];
       assert.instanceOf(nmr, Contract);
-    });
-
-    it.skip("erasure contracts should have been deployed", async function() {
-      const [nmr, registries, factories] = await this.env.run(
-        "erasure:deploy-full"
-      );
-      // console.log(nmr, registries);
-      // setup.nmrToken
-      // const nmr = (await this.env.deployments.getDeployedContracts(
-      //   setup.nmrToken
-      // ))[0];
-      // assert.instanceOf(nmr, Contract);
     });
 
     it("should define the erasure tasks", function() {

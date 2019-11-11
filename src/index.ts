@@ -4,12 +4,12 @@ import {
   TASK_TEST
 } from "@nomiclabs/buidler/builtin-tasks/task-names";
 import {
+  extendConfig,
   extendEnvironment,
   internalTask,
   task,
   types,
-  usePlugin,
-  extendConfig
+  usePlugin
 } from "@nomiclabs/buidler/config";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
 import {
@@ -60,6 +60,7 @@ export default function() {
       );
     }
   );
+
   task(TASK_TEST, async (_, env, runSuper) => {
     await env.run("erasure:deploy-full");
     await runSuper();
@@ -73,7 +74,7 @@ export default function() {
   task(TASK_CLEAN, async (_, __, runSuper) => {
     await runSuper();
     setInitialState();
-    console.log("deploy clean");
+    console.log("Deploy clean");
   });
 
   internalTask("erasure:deploy").setAction(
@@ -87,8 +88,9 @@ export default function() {
       // FIXME : override getContract function to receive a signer.
       const contractFactory = await ethers.getContract(name);
       const contract = await contractFactory.deploy(...contractParams);
-      await erasure.saveDeployedContract(name, contract);
+      await contract.deployed();
 
+      await erasure.saveDeployedContract(name, contract);
       const receipt = await ethers.provider.getTransactionReceipt(
         contract.deployTransaction.hash!
       );
@@ -289,11 +291,11 @@ export default function() {
     .addParam("operator", "Agreement's operator")
     .addParam("staker", "Agreement's staker")
     .addParam("counterparty", "Agreement's counterparty")
-    .addParam("ratio", "Agreement's ratio value", "1") // throw if I don't specify param's type.
+    .addParam("ratio", "Agreement's ratio value", "1") // it throws if I don't specify param's type.
     .addParam("ratioType", "Agreement's ratio type", 2, types.int)
     .addParam("metadata", "Agreement's metadata", "0x0")
     .addOptionalParam("countdown", "Optional. Agreement's countdown")
-    .setAction(async (args, { run }: any) => {
+    .setAction(async (args, { run }: BuidlerRuntimeEnvironment) => {
       const {
         operator,
         staker,

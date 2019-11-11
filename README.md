@@ -50,9 +50,9 @@ This plugin extends the Buidler Runtime Environment by adding the following elem
   }
 ```
 
-- `deploySetup`: defines the nmr token, registries and factories of your erasure setup.
-- `getDeployedAddresses`: a function that retrieves the addresses of a given contract name.
-- `getDeployedContracts`: a function that retrieves the contracts of a given contract name.
+- `deploySetup`: the erasure deploy setup.
+- `getDeployedAddresses`: a function that retrieves the deployed addresses of a given contract name.
+- `getDeployedContracts`: a function that retrieves the deployed contracts of a given contract name.
 - `saveDeployedContract`: store a contract's address into the deployment state.
 - `getContractInstance`: retrieves an instance of a contract attached to an address
 
