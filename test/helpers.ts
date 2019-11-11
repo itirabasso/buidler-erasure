@@ -13,8 +13,23 @@ export function useEnvironment(projectPath: string) {
   beforeEach("Loading buidler environment", function() {
     previousCWD = process.cwd();
     process.chdir(projectPath);
-
     this.env = require("@nomiclabs/buidler");
+
+    // this.env.erasure.deploySetup = {
+    //   nmrToken: "NMR",
+    //   registries: {
+    //     "R": {}
+    //   },
+    //   factories: {
+    //     "T": {
+    //       config: {
+    //         factory: "F",
+    //         template: "T",
+    //         registry: "R"
+    //       }
+    //     }
+    //   }
+    // };
   });
 
   afterEach("Resetting buidler", function() {

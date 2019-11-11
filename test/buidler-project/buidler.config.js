@@ -11,6 +11,8 @@ loadPluginFile(__dirname + "/../../src/index");
 module.exports = {
   defaultNetwork: "buidlerevm",
   paths: {
-    sources: __dirname + "/contracts"
+    sources: __dirname + "/contracts",
+    artifacts: __dirname + "/artifacts"
+
   }
 };

@@ -49,7 +49,7 @@ if (!existsSync(stateFilename)) {
 }
 
 export default function() {
-  task(
+  internalTask(
     "erasure:copy-contracts",
     "Temporal task. Copy the erasure protocol contracts into your project's sources folder.",
     async (_, { config }) => {
@@ -379,7 +379,6 @@ export default function() {
 
         getDeployedContracts: async (name: string): Promise<Contract[]> => {
           const addresses = await env.erasure.getDeployedAddresses(name);
-          // console.log("Found these addresses for", name, addresses);
 
           const factory = await env.ethers.getContract(name);
           const artifact = readArtifactSync(env.config.paths.artifacts, name);
@@ -426,9 +425,9 @@ export default function() {
             } else {
               // If the last deployed instance has the same address as the new instance,
               // do not update the list of addresses
-              console.warn(
-                "The last deployed contract has the same address as the new one"
-              );
+              // console.warn(
+              //   "The last deployed contract has the same address as the new one"
+              // );
             }
           } else {
             const addresses = [instance.address];
