@@ -51,6 +51,5 @@ declare module "@nomiclabs/buidler/types" {
         account?: Signer | string
       ): Promise<void>;
     };
-    };
   }
 }
