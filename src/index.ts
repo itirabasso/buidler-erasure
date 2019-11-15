@@ -327,14 +327,21 @@ export default function() {
     };
 
     // Defines the property from(signer) on a contract instance and retrieves it
-    const etherlimeFromWrapper = function(contract: Contract): Contract {
+    const etherlimeFromWrapper = (contract: Contract): Contract => {
       Object.defineProperty(contract, "from", {
-        value: function(address: string) {
+        value: (signer: any) => {
           // todo : why am i making this async?
           // const address =
           //   typeof signer === "string" ? signer : await signer.getAddress();
           // console.log("attaching to new signer", address);
-          return contract.attach(address);
+          return contract.connect(signer);
+        }
+      });
+      Object.defineProperty(contract, "waitForReceipt", {
+        value: async (tx: any) => {
+          return env.ethers.provider.getTransactionReceipt(
+            tx === "string" ? tx : tx.hash
+          );
         }
       });
       return contract;
@@ -466,11 +473,9 @@ export default function() {
             typeof template === "string"
               ? (await env.erasure.getDeployedContracts(template))[0]
               : template;
-
           const tx = await factoryContract.create(
             abiEncodeWithSelector("initialize", params, values)
           );
-
           const receipt = await env.ethers.provider.getTransactionReceipt(
             tx.hash
           );
@@ -482,6 +487,7 @@ export default function() {
                 templateContract.interface.abi,
                 factoryContract.signer
               );
+              // console.log("instance address", event.values.instance);
               return etherlimeFromWrapper(c);
             }
           }
@@ -564,7 +570,7 @@ export default function() {
             contract = agreement;
           }
           const tx = await contract.increaseStake(currentStake, amountToAdd);
-          console.log(tx);
+          // console.log(tx);
           return tx;
         },
 
@@ -583,7 +589,7 @@ export default function() {
             signer
           );
           const tx = await agreement.punish(currentStake, punishment, message);
-          console.log(tx);
+          // console.log(tx);
           return tx;
         },
         reward: async (
@@ -600,7 +606,7 @@ export default function() {
             signer
           );
           const tx = await agreement.reward(currentStake, amountToAdd);
-          console.log(tx);
+          // console.log(tx);
           return tx;
         }
       };
