@@ -2,14 +2,16 @@ type Registries = "Erasure_Agreements" | "Erasure_Posts";
 type Factories = "SimpleGriefing" | "CountdownGriefing" | "Post" | "Feed";
 
 /* tslint:disable */
-interface Registry {}
-interface Factory {
+export interface Registry {}
+export interface Factory {
+  // TODO : config could be deleted
   config: {
     factory: string;
     template: string;
     registry: string;
   };
 }
+export interface FactorySetup extends Factory {}
 
 // TODO : a quick refactor here could improve usability
 export interface ErasureDeploySetup {

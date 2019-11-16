@@ -18,7 +18,13 @@ import {
   readArtifactSync
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { Contract, ContractFactory, Signer, utils } from "ethers";
+import {
+  Contract,
+  ContractFactory,
+  Signer,
+  utils,
+  getDefaultProvider
+} from "ethers";
 import { existsSync } from "fs";
 import {
   ensureFileSync,
@@ -29,10 +35,11 @@ import {
 } from "fs-extra";
 
 import { defaultSetup } from "./defaultSetup";
-import { ErasureDeploySetup } from "./erasureSetup";
+import { ErasureDeploySetup, Factory, FactorySetup } from "./erasureSetup";
 import { abiEncodeWithSelector } from "./utils";
 import { BigNumber } from "ethers/utils";
 import { join } from "path";
+import { TransactionReceipt } from "ethers/providers";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -327,7 +334,7 @@ export default function() {
     };
 
     // Defines the property from(signer) on a contract instance and retrieves it
-    const etherlimeFromWrapper = (contract: Contract): Contract => {
+    const etherlimeWrapper = (contract: Contract): Contract => {
       Object.defineProperty(contract, "from", {
         value: (signer: any) => {
           // todo : why am i making this async?
@@ -343,6 +350,9 @@ export default function() {
             tx === "string" ? tx : tx.hash
           );
         }
+      });
+      Object.defineProperty(contract, "contractAddress", {
+        get: () => contract.address
       });
       return contract;
     };
@@ -371,11 +381,18 @@ export default function() {
           // TODO : not sure about this
           return state[chainId][name];
         },
-
-        getDeployedContracts: async (name: string): Promise<Contract[]> => {
-          const addresses = await env.erasure.getDeployedAddresses(name);
-
+        getLastDeployedContract: async (name: string): Promise<Contract> => {
+          return (await env.erasure.getDeployedContracts(name, 1))[0];
+        },
+        getDeployedContracts: async (
+          name: string,
+          amount: number = 1
+        ): Promise<Contract[]> => {
           const factory = await env.ethers.getContract(name);
+          const addresses = await env.erasure.getDeployedAddresses(
+            name,
+            amount
+          );
           const artifact = readArtifactSync(env.config.paths.artifacts, name);
 
           // TODO : should use deployedBytecode instead?
@@ -387,7 +404,9 @@ export default function() {
             );
           }
 
-          return addresses.map((addr: string) => factory.attach(addr));
+          return addresses.map((addr: string) =>
+            etherlimeWrapper(factory.attach(addr))
+          );
         },
 
         saveDeployedContract: async (
@@ -440,6 +459,45 @@ export default function() {
           // update state
           writeState(state);
         },
+        deploy: async (
+          contractName: string,
+          params: any[],
+          signer: Signer | string
+        ): Promise<[Contract, TransactionReceipt]> => {
+          // FIXME : override getContract function to receive a signer.
+          const contractFactory = await env.ethers.getContract(contractName);
+          const contract = await contractFactory.deploy(...params);
+          await contract.deployed();
+
+          await env.erasure.saveDeployedContract(name, contract);
+          const receipt = await env.ethers.provider.getTransactionReceipt(
+            contract.deployTransaction.hash!
+          );
+          return [contract, receipt];
+        },
+        deployFactory: async (
+          factorySetup: FactorySetup,
+          signer: Signer | string
+        ): Promise<[Contract, Contract]> => {
+          // const { factory, template, registry } = setup.config;
+          const registry = await env.erasure.getLastDeployedContract(
+            factorySetup.config.registry
+          );
+
+          // console.log("deploying template", registryInstance.address);
+          const [template] = await env.erasure.deploy(
+            factorySetup.config.template,
+            [],
+            await getSigner(signer)
+          );
+          const [factory] = await env.erasure.deploy(
+            factorySetup.config.factory,
+            [registry.address, template.address],
+            signer
+          );
+          await registry.addFactory(factory.address, "0x");
+          return [template, factory];
+        },
 
         getContractInstance: (
           name: string,
@@ -465,6 +523,17 @@ export default function() {
           params: any[],
           values: any[]
         ): Promise<Contract> => {
+          // const process = (v: any) => (v instanceof Signer ? v._address : v);
+          const processValues = async (dirtyValues: any[]) => {
+            const ret = [];
+            for (const v of dirtyValues) {
+              ret.push(Signer.isSigner(v) ? await v.getAddress() : v);
+            }
+            console.log("clean values", ret);
+
+            return ret;
+          };
+          // console.log("dirtyvalues", values);
           const factoryContract =
             typeof factory === "string"
               ? (await env.erasure.getDeployedContracts(factory))[0]
@@ -474,7 +543,11 @@ export default function() {
               ? (await env.erasure.getDeployedContracts(template))[0]
               : template;
           const tx = await factoryContract.create(
-            abiEncodeWithSelector("initialize", params, values)
+            abiEncodeWithSelector(
+              "initialize",
+              params,
+              await processValues(values)
+            )
           );
           const receipt = await env.ethers.provider.getTransactionReceipt(
             tx.hash
@@ -488,7 +561,7 @@ export default function() {
                 factoryContract.signer
               );
               // console.log("instance address", event.values.instance);
-              return etherlimeFromWrapper(c);
+              return etherlimeWrapper(c);
             }
           }
 

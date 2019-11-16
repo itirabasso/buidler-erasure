@@ -3,14 +3,24 @@ import "@nomiclabs/buidler-ethers/src/type-extensions";
 import { ErasureDeploySetup } from "./erasureSetup";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
+import { TransactionReceipt } from "ethers/providers";
 
 declare module "@nomiclabs/buidler/types" {
   export interface BuidlerRuntimeEnvironment {
     erasure: {
       deploySetup: ErasureDeploySetup;
-      getDeployedAddresses(name: string): Promise<string[]>;
-      getDeployedContracts(contractName: string): Promise<Contract[]>;
+      getDeployedAddresses(name: string, amount?: number): Promise<string[]>;
+      getLastDeployedContract(contractName: string): Promise<Contract>;
+      getDeployedContracts(
+        contractName: string,
+        amount?: number
+      ): Promise<Contract[]>;
       saveDeployedContract(name: string, instance: any): void;
+      deploy(
+        contractName: string,
+        params: any[],
+        signer: Signer | string
+      ): Promise<[Contract, TransactionReceipt]>;
       getContractInstance(
         name: string,
         address: string,
