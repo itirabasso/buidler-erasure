@@ -1,0 +1,258 @@
+{
+  "contracts": {
+    "contracts/F.sol": {
+      "F": {
+        "abi": [],
+        "evm": {
+          "bytecode": {
+            "linkReferences": {},
+            "object": "6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a72315820e8fe5d60d5304d0b0543fa404457abb42d0cdc8cb9fd464ae9fcfb958bd8592364736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH1 0xF JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x3E DUP1 PUSH1 0x1D PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xe8 INVALID 0x5d PUSH1 0xD5 ADDRESS 0x4d SIGNEXTEND SDIV NUMBER STATICCALL BLOCKHASH DIFFICULTY JUMPI 0xab 0xb4 0x2d 0xc 0xdc DUP13 0xb9 REVERT 0x46 0x4a 0xe9 0xfc 0xfb SWAP6 DUP12 0xd8 MSIZE 0x23 PUSH5 0x736F6C6343 STOP SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:13:0:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;26:13:0;;;;;;;"
+          },
+          "deployedBytecode": {
+            "linkReferences": {},
+            "object": "6080604052600080fdfea265627a7a72315820e8fe5d60d5304d0b0543fa404457abb42d0cdc8cb9fd464ae9fcfb958bd8592364736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xe8 INVALID 0x5d PUSH1 0xD5 ADDRESS 0x4d SIGNEXTEND SDIV NUMBER STATICCALL BLOCKHASH DIFFICULTY JUMPI 0xab 0xb4 0x2d 0xc 0xdc DUP13 0xb9 REVERT 0x46 0x4a 0xe9 0xfc 0xfb SWAP6 DUP12 0xd8 MSIZE 0x23 PUSH5 0x736F6C6343 STOP SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:13:0:-;;;;;"
+          },
+          "methodIdentifiers": {}
+        }
+      }
+    },
+    "contracts/NMR.sol": {
+      "NMR": {
+        "abi": [],
+        "evm": {
+          "bytecode": {
+            "linkReferences": {},
+            "object": "6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a72315820d4bbdc138240f753f5fd992904d577ac21c87c759ece37693175ff790f25542c64736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH1 0xF JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x3E DUP1 PUSH1 0x1D PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xd4 0xbb 0xdc SGT DUP3 BLOCKHASH 0xf7 MSTORE8 CREATE2 REVERT SWAP10 0x29 DIV 0xd5 PUSH24 0xAC21C87C759ECE37693175FF790F25542C64736F6C634300 SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:15:1:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;26:15:1;;;;;;;"
+          },
+          "deployedBytecode": {
+            "linkReferences": {},
+            "object": "6080604052600080fdfea265627a7a72315820d4bbdc138240f753f5fd992904d577ac21c87c759ece37693175ff790f25542c64736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xd4 0xbb 0xdc SGT DUP3 BLOCKHASH 0xf7 MSTORE8 CREATE2 REVERT SWAP10 0x29 DIV 0xd5 PUSH24 0xAC21C87C759ECE37693175FF790F25542C64736F6C634300 SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:15:1:-;;;;;"
+          },
+          "methodIdentifiers": {}
+        }
+      }
+    },
+    "contracts/R.sol": {
+      "R": {
+        "abi": [],
+        "evm": {
+          "bytecode": {
+            "linkReferences": {},
+            "object": "6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a72315820bbe0150a4ec8fd09f655b148a55a953826a0db5225a4d783c8026fd22b52ed0164736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH1 0xF JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x3E DUP1 PUSH1 0x1D PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xbb 0xe0 ISZERO EXP 0x4e 0xc8 REVERT MULMOD 0xf6 SSTORE 0xb1 0x48 0xa5 GAS SWAP6 CODESIZE 0x26 LOG0 0xdb MSTORE 0x25 LOG4 0xd7 DUP4 0xc8 MUL PUSH16 0xD22B52ED0164736F6C634300050B0032 ",
+            "sourceMap": "26:13:2:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;26:13:2;;;;;;;"
+          },
+          "deployedBytecode": {
+            "linkReferences": {},
+            "object": "6080604052600080fdfea265627a7a72315820bbe0150a4ec8fd09f655b148a55a953826a0db5225a4d783c8026fd22b52ed0164736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xbb 0xe0 ISZERO EXP 0x4e 0xc8 REVERT MULMOD 0xf6 SSTORE 0xb1 0x48 0xa5 GAS SWAP6 CODESIZE 0x26 LOG0 0xdb MSTORE 0x25 LOG4 0xd7 DUP4 0xc8 MUL PUSH16 0xD22B52ED0164736F6C634300050B0032 ",
+            "sourceMap": "26:13:2:-;;;;;"
+          },
+          "methodIdentifiers": {}
+        }
+      }
+    },
+    "contracts/T.sol": {
+      "T": {
+        "abi": [],
+        "evm": {
+          "bytecode": {
+            "linkReferences": {},
+            "object": "6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a72315820e960211b0b241d6c08f1bd28dd27826e98812f743ccf1e82b225db0bfbc141ae64736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH1 0xF JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x3E DUP1 PUSH1 0x1D PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xe9 PUSH1 0x21 SHL SIGNEXTEND 0x24 SAR PUSH13 0x8F1BD28DD27826E98812F743C 0xcf 0x1e DUP3 0xb2 0x25 0xdb SIGNEXTEND 0xfb 0xc1 COINBASE 0xae PUSH5 0x736F6C6343 STOP SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:13:3:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;26:13:3;;;;;;;"
+          },
+          "deployedBytecode": {
+            "linkReferences": {},
+            "object": "6080604052600080fdfea265627a7a72315820e960211b0b241d6c08f1bd28dd27826e98812f743ccf1e82b225db0bfbc141ae64736f6c634300050b0032",
+            "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0xe9 PUSH1 0x21 SHL SIGNEXTEND 0x24 SAR PUSH13 0x8F1BD28DD27826E98812F743C 0xcf 0x1e DUP3 0xb2 0x25 0xdb SIGNEXTEND 0xfb 0xc1 COINBASE 0xae PUSH5 0x736F6C6343 STOP SDIV SIGNEXTEND STOP ORIGIN ",
+            "sourceMap": "26:13:3:-;;;;;"
+          },
+          "methodIdentifiers": {}
+        }
+      }
+    }
+  },
+  "sources": {
+    "contracts/F.sol": {
+      "ast": {
+        "absolutePath": "contracts/F.sol",
+        "exportedSymbols": {
+          "F": [
+            2
+          ]
+        },
+        "id": 3,
+        "nodeType": "SourceUnit",
+        "nodes": [
+          {
+            "id": 1,
+            "literals": [
+              "solidity",
+              "^",
+              "0.5",
+              ".1"
+            ],
+            "nodeType": "PragmaDirective",
+            "src": "0:23:0"
+          },
+          {
+            "baseContracts": [],
+            "contractDependencies": [],
+            "contractKind": "contract",
+            "documentation": null,
+            "fullyImplemented": true,
+            "id": 2,
+            "linearizedBaseContracts": [
+              2
+            ],
+            "name": "F",
+            "nodeType": "ContractDefinition",
+            "nodes": [],
+            "scope": 3,
+            "src": "26:13:0"
+          }
+        ],
+        "src": "0:39:0"
+      },
+      "id": 0
+    },
+    "contracts/NMR.sol": {
+      "ast": {
+        "absolutePath": "contracts/NMR.sol",
+        "exportedSymbols": {
+          "NMR": [
+            5
+          ]
+        },
+        "id": 6,
+        "nodeType": "SourceUnit",
+        "nodes": [
+          {
+            "id": 4,
+            "literals": [
+              "solidity",
+              "^",
+              "0.5",
+              ".1"
+            ],
+            "nodeType": "PragmaDirective",
+            "src": "0:23:1"
+          },
+          {
+            "baseContracts": [],
+            "contractDependencies": [],
+            "contractKind": "contract",
+            "documentation": null,
+            "fullyImplemented": true,
+            "id": 5,
+            "linearizedBaseContracts": [
+              5
+            ],
+            "name": "NMR",
+            "nodeType": "ContractDefinition",
+            "nodes": [],
+            "scope": 6,
+            "src": "26:15:1"
+          }
+        ],
+        "src": "0:41:1"
+      },
+      "id": 1
+    },
+    "contracts/R.sol": {
+      "ast": {
+        "absolutePath": "contracts/R.sol",
+        "exportedSymbols": {
+          "R": [
+            8
+          ]
+        },
+        "id": 9,
+        "nodeType": "SourceUnit",
+        "nodes": [
+          {
+            "id": 7,
+            "literals": [
+              "solidity",
+              "^",
+              "0.5",
+              ".1"
+            ],
+            "nodeType": "PragmaDirective",
+            "src": "0:23:2"
+          },
+          {
+            "baseContracts": [],
+            "contractDependencies": [],
+            "contractKind": "contract",
+            "documentation": null,
+            "fullyImplemented": true,
+            "id": 8,
+            "linearizedBaseContracts": [
+              8
+            ],
+            "name": "R",
+            "nodeType": "ContractDefinition",
+            "nodes": [],
+            "scope": 9,
+            "src": "26:13:2"
+          }
+        ],
+        "src": "0:39:2"
+      },
+      "id": 2
+    },
+    "contracts/T.sol": {
+      "ast": {
+        "absolutePath": "contracts/T.sol",
+        "exportedSymbols": {
+          "T": [
+            11
+          ]
+        },
+        "id": 12,
+        "nodeType": "SourceUnit",
+        "nodes": [
+          {
+            "id": 10,
+            "literals": [
+              "solidity",
+              "^",
+              "0.5",
+              ".1"
+            ],
+            "nodeType": "PragmaDirective",
+            "src": "0:23:3"
+          },
+          {
+            "baseContracts": [],
+            "contractDependencies": [],
+            "contractKind": "contract",
+            "documentation": null,
+            "fullyImplemented": true,
+            "id": 11,
+            "linearizedBaseContracts": [
+              11
+            ],
+            "name": "T",
+            "nodeType": "ContractDefinition",
+            "nodes": [],
+            "scope": 12,
+            "src": "26:13:3"
+          }
+        ],
+        "src": "0:39:3"
+      },
+      "id": 3
+    }
+  }
+}

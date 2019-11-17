@@ -2,12 +2,13 @@
 import { assert } from "chai";
 
 import { useEnvironment } from "./helpers";
+import { FactorySetup } from "./erasureSetup";
 
 describe("Integration tests examples", function() {
   describe("Buidler Runtime Environment extension", async function() {
     useEnvironment(__dirname + "/buidler-project");
 
-    it("should define the erasure tasks", function() {
+    it.skip("should define the erasure tasks", function() {
       assert.hasAnyKeys(this.env.tasks, [
         "erasure:deploy",
         "erasure:deploy-contract",
@@ -20,6 +21,10 @@ describe("Integration tests examples", function() {
         "erasure:create-agreement",
         "erasure:stake"
       ]);
+    });
+    it("should deploy a registry", async function() {
+    });
+    it("should deploy a factory", async function() {
     });
   });
 });

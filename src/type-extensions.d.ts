@@ -1,14 +1,26 @@
 import "@nomiclabs/buidler/types";
 import "@nomiclabs/buidler-ethers/src/type-extensions";
-import { ErasureDeploySetup } from "./erasureSetup";
+import {
+  ErasureSetup,
+  FactorySetup,
+  RegistrySetup,
+  RegistryNames,
+  FactoryNames
+} from "./erasureSetup";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
 import { TransactionReceipt } from "ethers/providers";
+import { Factory } from "./index";
 
 declare module "@nomiclabs/buidler/types" {
+
+  export interface BuidlerConfig {
+    erasure: {
+      setup: ErasureSetup;
+    },
+  }
   export interface BuidlerRuntimeEnvironment {
     erasure: {
-      deploySetup: ErasureDeploySetup;
       getDeployedAddresses(name: string, amount?: number): Promise<string[]>;
       getLastDeployedContract(contractName: string): Promise<Contract>;
       getDeployedContracts(
@@ -19,16 +31,25 @@ declare module "@nomiclabs/buidler/types" {
       deploy(
         contractName: string,
         params: any[],
-        signer: Signer | string
+        signer?: Signer | string
       ): Promise<[Contract, TransactionReceipt]>;
+      deployRegistry(registryName: string, signer?: Signer | string): Promise<Contract>;
+      deployFactory(
+        factoryName: string,
+        factorySetup: FactorySetup,
+        signer?: Signer | string
+      ): Promise<Contract>;
+      getFactory(
+        factory: FactorySetup | string
+      ): Promise<Contract>;
+      // ): Promise<Factory>;
       getContractInstance(
         name: string,
-        address: string,
-        account: string | Signer
-      ): Contract;
+        address?: string,
+        account?: string | Signer
+      ): Promise<Contract>;
       createInstance(
-        factory: any,
-        template: any,
+        factory: FactoryNames,
         params: any[],
         values: any[]
       ): Promise<Contract>;
@@ -38,28 +59,9 @@ declare module "@nomiclabs/buidler/types" {
         counterparty: Signer | string,
         ratio: number | BigNumber,
         ratioType: 1 | 2 | 3, // TODO : define a type for this
-        metadata: string,
-        countdown?: number
+        countdown?: number,
+        metadata?: string
       ): Promise<Contract>;
-      stake(
-        agreementAddress: Contract | string,
-        currentStake: number,
-        amountToAdd: number,
-        account?: Signer | string
-      ): Promise<any>;
-      punish(
-        agreementAddress: string,
-        currentStake: number,
-        punishment: number,
-        message: string,
-        account?: Signer | string
-      ): Promise<number>;
-      reward(
-        agreementAddress: string,
-        currentStake: number,
-        amountToAdd: number,
-        account?: Signer | string
-      ): Promise<void>;
     };
   }
 }

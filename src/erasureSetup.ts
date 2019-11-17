@@ -1,21 +1,42 @@
-type Registries = "Erasure_Agreements" | "Erasure_Posts";
-type Factories = "SimpleGriefing" | "CountdownGriefing" | "Post" | "Feed";
+export type RegistryNames = "Erasure_Agreements" | "Erasure_Posts";
+export type TemplateNames = "SimpleGriefing" | "CountdownGriefing" | "Post" | "Feed";
+export type FactoryNames = "SimpleGriefing" | "CountdownGriefing" | "Post" | "Feed";
+export type ContractType = "token" | "registry" | "factory" | "template";
 
-/* tslint:disable */
-export interface Registry {}
-export interface Factory {
-  // TODO : config could be deleted
-  config: {
-    factory: string;
-    template: string;
-    registry: string;
-  };
+export interface ContractSetup {
+  type: ContractType;
+  artifact: string;
+  address?: string;
 }
-export interface FactorySetup extends Factory {}
 
-// TODO : a quick refactor here could improve usability
-export interface ErasureDeploySetup {
-  nmrToken: string;
-  registries: Record<Registries, Registry>;
-  factories: Record<Factories, Factory>;
+export interface RegistrySetup extends ContractSetup { }
+
+export interface TemplateSetup extends ContractSetup {
+  type: "template";
+  factory: string;
 }
+
+export interface FactorySetup extends ContractSetup {
+  type: "factory";
+  template: string;
+  registry: string;
+}
+
+export function isFactorySetup(setup: any): setup is FactorySetup {
+  return setup.type === 'factory'
+}
+
+// updateContractAddress: (name: string, address: string) => ContractSetup;
+export interface ErasureSetup { 
+  [name: string]: ContractSetup | FactorySetup;
+
+// export interface ErasureSetup {
+//   [name: string]: ContractSetup
+// }
+
+// export interface ErasureSetup {
+//   nmrToken: ContractSetup;
+//   templates: Record<FactoryNames, ContractSetup>;
+//   registries: Record<RegistryNames, ContractSetup>;
+//   factories: Record<FactoryNames, FactorySetup>;
+// }

@@ -1,0 +1,40 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/F.sol": {
+      "content": "pragma solidity ^0.5.1;\n\n\ncontract F {}"
+    },
+    "contracts/NMR.sol": {
+      "content": "pragma solidity ^0.5.1;\n\n\ncontract NMR {}"
+    },
+    "contracts/R.sol": {
+      "content": "pragma solidity ^0.5.1;\n\n\ncontract R {}"
+    },
+    "contracts/T.sol": {
+      "content": "pragma solidity ^0.5.1;\n\n\ncontract T {}"
+    }
+  },
+  "settings": {
+    "metadata": {
+      "useLiteralContent": true
+    },
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers"
+        ],
+        "": [
+          "id",
+          "ast"
+        ]
+      }
+    }
+  }
+}
