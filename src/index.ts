@@ -8,21 +8,16 @@ import {
   extendEnvironment,
   internalTask,
   task,
-  types,
   usePlugin
 } from "@nomiclabs/buidler/config";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
 import {
   ensurePluginLoadedWithUsePlugin,
   lazyObject,
-  readArtifactSync
+  readArtifactSync,
+  BUIDLEREVM_NETWORK_NAME
 } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import {
-  Contract,
-  ContractFactory,
-  Signer
-} from "ethers";
 import { existsSync } from "fs";
 import {
   ensureDir,
@@ -32,13 +27,13 @@ import {
   ensureFileSync
 } from "fs-extra";
 
-import { ErasureSetup, FactorySetup, RegistryNames, FactoryNames, ContractSetup, isFactorySetup, TemplateNames, TemplateSetup } from "./erasureSetup";
+import { ErasureSetup, FactorySetup, ContractSetup, isFactorySetup, TemplateNames, TemplateSetup } from "./erasureSetup";
 import { join } from "path";
 import { TransactionReceipt, Provider } from "ethers/providers";
 import { abiEncodeWithSelector } from "./utils";
 import { BigNumber } from "ethers/utils";
 import { defaultSetup } from "./defaultSetup";
-import { eventNames } from "cluster";
+import { Signer, Contract, ContractFactory } from "ethers";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -96,132 +91,35 @@ export default function () {
   internalTask("erasure:deploy-setup")
     .setAction(
       async (
-        { setupFile }: { setupFile: string | undefined },
-        { ethers, erasure, config }: BuidlerRuntimeEnvironment
+        _,
+        { ethers, erasure }: BuidlerRuntimeEnvironment
       ) => {
         const signers = await ethers.signers();
         const deployer = signers[0];
-        const erasureSetup: ErasureSetup = config.erasure.setup;
+        const erasureSetup: ErasureSetup = erasure.getErasureSetup();
 
-        const deployContract = async (name: string, setup: ContractSetup) => {
-
-          let contract: Contract;
-          if (setup.address === undefined) {
-            if (isFactorySetup(setup)) {
-              contract = await erasure.deployFactory(name, setup, deployer)
-            } else {
-              [contract] = await erasure.deploy(setup.artifact, [], deployer)
-            }
-            // console.log(name, 'is now at', contract.address)
-            // config.erasure.setup[name].address = contract.address;
-
-          } else {
-            contract = await erasure.getContractInstance(setup.artifact, setup.address, deployer);
-          }
-          return contract;
-        }
-
-        async function executeSequentially(promises: Array<Promise<any>>) {
-          const ret = []
-          for (const p of promises) {
-            console.log('aaa');
-            const a = await p
-            ret.push(a)
-            console.log('bbb')
-          }
-          return ret;
-        }
-
-        // const contracts = await Promise.all(
-        //   Object.entries(erasureSetup).map(
-        //     ([name, setup]) => deployContract(name, setup)
-        //   )
-        // );
-
-        // const nmrSetup = Object.entries(erasureSetup).find(([_, setup]) => setup.type === 'token')
-        // if (nmrSetup === undefined) throw new Error('no nmr token');
-        // let [contract, setup] = nmrSetup
-        // const nmr = await deployContract(contract, setup);
-
-        for (const [contract, setup] of Object.entries(erasureSetup)) {
+        for (const setup of Object.values(erasureSetup)) {
           if (setup.type === 'factory') continue;
-          await deployContract(contract, setup);
+          await erasure.deployContract(setup);
         }
-        for (const [contract, setup] of Object.entries(erasureSetup)) {
+        for (const setup of Object.values(erasureSetup)) {
           if (setup.type !== 'factory') continue;
-          await deployContract(contract, setup);
+          await erasure.deployContract(setup);
         }
-        //  await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "registry")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const templates = await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "template")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const factories = await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "factory")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const registries = await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "registry")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const templates = await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "template")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const factories = await executeSequentially(Object.entries(erasureSetup)
-        //   .filter(([_, setup]) => setup.type === "factory")
-        //   .map(([contract, setup]) => deployContract(contract, setup)))
-
-        // const nmrSigner = ethers.provider.getSigner("0x9608010323ed882a38ede9211d7691102b4f0ba0");
-        // let nmr;
-        // if (setup.nmrToken.address === undefined) {
-        //   [nmr] = await erasure.deploy(setup.nmrToken.artifact, [], deployer);
-        // } else {
-        //   nmr = await erasure.getContractInstance(setup.nmrToken.artifact, setup.nmrToken.address, deployer);
-        // }
-
-        // const registries: { [key: string]: Contract } = {};
-        // for (const [name, registry] of Object.entries(setup.registries)) {
-        //   if (registry.address === undefined) {
-        //     registries[name] = await erasure.deployRegistry(registry.artifact, deployer);
-        //   } else {
-        //     registries[name] = await erasure.getContractInstance(registry.artifact, registry.address, deployer);
-        //   }
-
-        // }
-        // const templates: { [key: string]: Contract } = {};
-        // for (const [name, template] of Object.entries(setup.templates)) {
-        //   if (template.address === undefined) {
-        //     templates[name] = await erasure.deployRegistry(template.artifact, deployer);
-        //   } else {
-        //     templates[name] = await erasure.getContractInstance(template.artifact, template.address, deployer);
-        //   }
-        // }
-        // const factories: { [key: string]: Contract } = {};
-        // for (const [name, factorySetup] of Object.entries(setup.factories)) {
-        //   const { template, registry } = factorySetup.config;
-        //   if (factorySetup.address === undefined) {
-        //     factories[name] = await erasure.deployFactory(factorySetup.artifact, template, registry, deployer);
-        //   } else {
-        //     // factories[name] = await erasure.getFactory(factorySetup)
-        //     factories[name] = await erasure.getContractInstance(factorySetup.artifact, factorySetup.address, deployer);
-
-        //   }
-        // }
 
         console.log("Erasure deployed");
-        // return [nmr, registries, templates, factories];
       }
     );
 
   extendConfig((config, userConfig) => {
+
     config.erasure = {
-      setup: defaultSetup
+      setup: {
+        [BUIDLEREVM_NETWORK_NAME]: defaultSetup,
+        ...userConfig.erasure.setup
+      }
     }
-    config.erasure = { ...config.erasure, ...userConfig.erasure }
+    // config.erasure = { ...config.erasure, ...userConfig.erasure }
   });
   extendEnvironment((env: BuidlerRuntimeEnvironment) => {
     const getSigner = async (account?: Signer | string) => {
@@ -263,6 +161,7 @@ export default function () {
     env.erasure = lazyObject(() => {
       const getChainId = createChainIdGetter(env.ethereum);
       return {
+        setup: env.config.erasure.setup[env.network.name],
         getDeployedAddresses: async (name: string, chainId?: number): Promise<string[]> => {
           const state = readState();
           if (chainId === undefined) {
@@ -362,11 +261,14 @@ export default function () {
           // update state
           writeState(state);
         },
+        getErasureSetup(): ErasureSetup {
+          return env.config.erasure.setup[env.network.name];
+        },
         deploy: async (
           contractName: string,
           params: any[],
           signer?: Signer | string
-        ): Promise<[Contract, TransactionReceipt]> => {
+        ): Promise<[Contract, any]> => {
           const contractFactory = await env.ethers.getContract(contractName);
           contractFactory.connect(await getSigner(signer));
           const contract = await contractFactory.deploy(...params);
@@ -379,34 +281,33 @@ export default function () {
           console.log("Deployed", contractName, "at", contract.address);
           return [contract, receipt];
         },
-
-        deployRegistry: async (registryName: RegistryNames, signer: Signer | string): Promise<Contract> => {
-          const [registry] = await env.erasure.deploy(registryName, [], await getSigner(signer));
-          // env.config.erasure.setup.registries[registryName].address = registry.address;
-          return registry;
+        deployContract: async (setup: ContractSetup, deployer?: Signer | string): Promise<Contract> => {
+          let contract: Contract;
+          if (setup.address === undefined) {
+            if (isFactorySetup(setup)) {
+              contract = await env.erasure.deployFactory(setup, deployer)
+            } else {
+              [contract] = await env.erasure.deploy(setup.artifact, [], deployer)
+            }
+          } else {
+            contract = await env.erasure.getContractInstance(setup.artifact, setup.address, deployer);
+          }
+          return contract;
         },
-
-
         deployFactory: async (
-          name: string,
           setup: FactorySetup,
           signer: Signer | string
         ): Promise<Contract> => {
-          // ): Promise<Factory> => {
           signer = await getSigner(signer);
           const registry = await env.erasure.getContractInstance(setup.registry);
           const template = await env.erasure.getContractInstance(setup.template)
-
+          console.log(setup.artifact, registry.address, template.address)
           const [factory] = await env.erasure.deploy(
             setup.artifact,
             [registry.address, template.address],
             signer
           );
           await registry.addFactory(factory.address, "0x");
-          // env.config.erasure.setup.factories[factoryName].address = factory.address;
-          // env.config.erasure.setup.templates[templateName].address = template.address;
-
-          // return new Factory(factory, template);
           return factory;
         },
 
@@ -417,7 +318,7 @@ export default function () {
         ): Promise<Contract> => {
           const signer = await getSigner(account);
 
-          const setup = env.config.erasure.setup[name];
+          const setup = env.erasure.getErasureSetup()[name];
           if (address === undefined) {
             if (setup.address === undefined) {
               address = (await env.erasure.getLastDeployedContract(setup.artifact)).address
@@ -439,21 +340,6 @@ export default function () {
           return factory.attach(address);
         },
 
-        getFactory: async (
-          factory: FactorySetup
-        ): Promise<Contract> => {
-          return env.erasure.getContractInstance(factory.template);
-          // TODO : podría agregar el address en el setup cuando deployo y evitar esta logica
-          // const factoryInstance = factory.address === undefined ? env.erasure.getLastDeployedContract(factory.artifact) :
-          //   env.erasure.getContractInstance(factory.artifact, factory.address)
-          // const tempalteInstance = factory.
-          //   env.config.erasure.setup.templates
-          // return env.erasure.getLastDeployedContract(typeof (factory) === 'string' ? factory : factory.artifact);
-          // } else {
-          // return env.erasure.getContractInstance(factory.artifact, factory.address);
-          // }
-        },
-
         // Creates an instance from a Factory.
         createInstance: async (
           template: TemplateNames,
@@ -461,22 +347,31 @@ export default function () {
           values: any[]
         ): Promise<Contract> => {
 
+          const getSetup = (name: string): ContractSetup => {
+            const setup = env.erasure.getErasureSetup()[name]
+            if (setup === undefined) {
+              throw new Error('Setup not found for ' + name)
+            }
+            return setup;
+          }
+
           const getFactoryName = (name: TemplateNames, setup: TemplateSetup) => {
             // TODO : the suffix can be configurable
             return setup.factory !== undefined ? setup.factory : name + "_Factory"
           }
 
-          const setup = env.config.erasure.setup;
-          const templateSetup = setup[template] as TemplateSetup
-          const factorySetup = setup[getFactoryName(template, templateSetup)];
-
+          const templateSetup = getSetup(template) as TemplateSetup
+          const factorySetup = getSetup(getFactoryName(template, templateSetup));
 
           const factoryInstance = await env.erasure.getContractInstance(factorySetup.artifact, factorySetup.address);
           const templateInstance = await env.erasure.getContractInstance(templateSetup.artifact, templateSetup.address);
           values = await processValues(values);
-
           const callData = abiEncodeWithSelector("initialize", params, values);
+          console.log(factoryInstance.address, templateInstance.address, params, values, callData);
+          // console.log(await factoryInstance.getInitSelector(), await factoryInstance.getTemplate())
+          // factoryInstance.interface.
           const tx = await factoryInstance.create(callData)
+          console.log(tx);
           const receipt = await env.ethers.provider.getTransactionReceipt(tx.hash);
           for (const log of receipt.logs!) {
             const event = factoryInstance.interface.parseLog(log);
@@ -502,6 +397,7 @@ export default function () {
           countdown?: number,
           metadata: string = "0x0"
         ): Promise<Contract> => {
+          ratio = typeof (ratio) === 'number' ? new BigNumber(ratio) : ratio;
           const agreementTemplate: TemplateNames =
             countdown === undefined
               ? "SimpleGriefing"

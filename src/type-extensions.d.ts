@@ -5,7 +5,8 @@ import {
   FactorySetup,
   RegistrySetup,
   RegistryNames,
-  FactoryNames
+  TemplateNames,
+  ContractSetup,
 } from "./erasureSetup";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
@@ -16,11 +17,12 @@ declare module "@nomiclabs/buidler/types" {
 
   export interface BuidlerConfig {
     erasure: {
-      setup: ErasureSetup;
+      setup: { [networkName: string]: ErasureSetup };
     },
   }
   export interface BuidlerRuntimeEnvironment {
     erasure: {
+      setup: ErasureSetup;
       getDeployedAddresses(name: string, amount?: number): Promise<string[]>;
       getLastDeployedContract(contractName: string): Promise<Contract>;
       getDeployedContracts(
@@ -28,28 +30,24 @@ declare module "@nomiclabs/buidler/types" {
         amount?: number
       ): Promise<Contract[]>;
       saveDeployedContract(name: string, instance: any): void;
+      getErasureSetup(): ErasureSetup;
       deploy(
         contractName: string,
         params: any[],
         signer?: Signer | string
-      ): Promise<[Contract, TransactionReceipt]>;
-      deployRegistry(registryName: string, signer?: Signer | string): Promise<Contract>;
+      ): Promise<[Contract, any]>;
+      deployContract(setup: ContractSetup): Promise<Contract>;
       deployFactory(
-        factoryName: string,
         factorySetup: FactorySetup,
         signer?: Signer | string
       ): Promise<Contract>;
-      getFactory(
-        factory: FactorySetup | string
-      ): Promise<Contract>;
-      // ): Promise<Factory>;
       getContractInstance(
         name: string,
         address?: string,
         account?: string | Signer
       ): Promise<Contract>;
       createInstance(
-        factory: FactoryNames,
+        factory: TemplateNames,
         params: any[],
         values: any[]
       ): Promise<Contract>;
