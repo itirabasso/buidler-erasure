@@ -36,7 +36,7 @@ declare module "@nomiclabs/buidler/types" {
         params: any[],
         signer?: Signer | string
       ): Promise<[Contract, any]>;
-      deployContract(setup: ContractSetup): Promise<Contract>;
+      deployContract(setup: ContractSetup, deployer?: Signer | string): Promise<Contract>;
       deployFactory(
         factorySetup: FactorySetup,
         signer?: Signer | string
@@ -45,6 +45,12 @@ declare module "@nomiclabs/buidler/types" {
         name: string,
         address?: string,
         account?: string | Signer
+      ): Promise<Contract>;
+      _createInstance(
+        template: Contract,
+        factory: Contract,
+        params: any[],
+        values: any[]
       ): Promise<Contract>;
       createInstance(
         factory: TemplateNames,
