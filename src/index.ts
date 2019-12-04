@@ -34,7 +34,7 @@ import { TransactionReceipt, Provider } from "ethers/providers";
 import { abiEncodeWithSelector } from "./utils";
 import { BigNumber } from "ethers/utils";
 import { defaultSetup } from "./defaultSetup";
-import { Signer, Contract, ContractFactory, ethers } from "ethers";
+import { Signer, Contract, ContractFactory, ethers, utils } from "ethers";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -74,12 +74,12 @@ export default function () {
   );
 
   task(TASK_TEST_SETUP_TEST_ENVIRONMENT, async (_, env, runSuper) => {
-    await env.run("erasure:erasure-setup");
+    // await env.run("erasure:erasure-setup");
     await runSuper();
   });
 
   task(TASK_RUN, async (_, env, runSuper) => {
-    await env.run("erasure:erasure-setup");
+    // await env.run("erasure:erasure-setup");
     await runSuper();
   });
 
@@ -93,7 +93,7 @@ export default function () {
     .setAction(
       async (
         _,
-        { ethers, erasure }: BuidlerRuntimeEnvironment
+        { ethers, erasure, ethereum }: BuidlerRuntimeEnvironment
       ) => {
         const signers = await ethers.signers();
         const deployer = signers[0];
@@ -101,7 +101,20 @@ export default function () {
 
         const contracts: { [key: string]: Contract } = {}
         for (const setup of Object.values(erasureSetup)) {
-          if (setup.type === 'factory') continue;
+          if (setup.type === 'token') {
+            // FIXME : hack to being able to deploy at a specific address
+            const nmrSigner = '0x9608010323ed882a38ede9211d7691102b4f0ba0';
+            signers[9].sendTransaction({ to: nmrSigner, value: utils.parseEther("2") })
+            const signer = await ethers.provider.getSigner(nmrSigner);
+            console.log(signer);
+            signer.sendTransaction({ to: nmrSigner, value: 0 })
+            const c = await erasure.deployContract(setup, nmrSigner);
+            contracts[setup.artifact] = c
+          }
+        }
+
+        for (const setup of Object.values(erasureSetup)) {
+          if (setup.type === 'factory' || setup.type === 'token') continue;
           // console.log('deploying', setup.artifact)
           const c = await erasure.deployContract(setup, deployer);
           contracts[setup.artifact] = c
@@ -114,7 +127,7 @@ export default function () {
           const c = await erasure.deployContract(setup, deployer);
           contracts[setup.artifact] = c
         }
-        
+
         console.log("Erasure deployed:", Object.keys(contracts));
         return contracts;
       }
@@ -333,6 +346,7 @@ export default function () {
             [registry.address, template.address],
             signer
           );
+          // console.log(await registry.signer.getAddress(), await factory.signer.getAddress())
           await registry.addFactory(factory.address, "0x");
           return factory;
         },
@@ -374,13 +388,13 @@ export default function () {
         ): Promise<Contract> => {
           values = await processValues(values);
           const callData = abiEncodeWithSelector("initialize", params, values);
-          console.log('Factory creator signer:', await factory.signer.getAddress())
+          // console.log('Factory creator signer:', await factory.signer.getAddress())
           const tx = await factory.create(callData)
-          
+
           const receipt = await env.ethers.provider.getTransactionReceipt(tx.hash);
           for (const log of receipt.logs!) {
             const event = factory.interface.parseLog(log);
-            console.log(event);
+            // console.log(event);
             if (event !== null && event.name === "InstanceCreated") {
               const c = new Contract(
                 event.values.instance,
@@ -415,11 +429,11 @@ export default function () {
 
           const templateSetup = getSetup(template) as TemplateSetup
           const factorySetup = getSetup(getFactoryName(template, templateSetup));
-          console.log('aa')
+          // console.log('aa')
           const factoryInstance = await env.erasure.getContractInstance(factorySetup.artifact, factorySetup.address);
           const templateInstance = await env.erasure.getContractInstance(templateSetup.artifact, templateSetup.address);
 
-          console.log('addresses', factoryInstance.address, templateInstance.address);
+          // console.log('addresses', factoryInstance.address, templateInstance.address);
 
           return env.erasure._createInstance(templateInstance, factoryInstance, params, values)
         },
@@ -434,7 +448,7 @@ export default function () {
           countdown?: number,
           metadata: string = "0x0"
         ): Promise<Contract> => {
-          ratio = typeof (ratio) === 'number' ? new BigNumber(ratio) : ratio;
+          // ratio = typeof (ratio) === 'number' ? new BigNumber(ratio) : ratio;
           const agreementTemplate: TemplateNames =
             countdown === undefined
               ? "SimpleGriefing"
