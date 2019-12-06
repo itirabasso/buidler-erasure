@@ -149,12 +149,11 @@ export default function () {
     );
 
   extendConfig((config, userConfig) => {
-    config.erasure = {
-      setup: {
-        "develop": defaultSetup,
-        ...userConfig.erasure.setup
+    Object.keys(config.networks).forEach(name => {
+      if (config.networks[name] === undefined) {
+        config.networks[name] = defaultSetup;
       }
-    }
+    })
   });
   extendEnvironment((env: BuidlerRuntimeEnvironment) => {
     const getSigner = async (account?: Signer | string) => {

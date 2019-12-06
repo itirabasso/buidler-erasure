@@ -15,6 +15,10 @@ import { Factory } from "./index";
 
 declare module "@nomiclabs/buidler/types" {
 
+  export interface Networks {
+    [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup};
+  }
+
   export interface BuidlerConfig {
     erasure: {
       setup: { [networkName: string]: ErasureSetup };
