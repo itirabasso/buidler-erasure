@@ -32,9 +32,12 @@ import { ErasureSetup, FactorySetup, ContractSetup, isFactorySetup, TemplateName
 import { join } from "path";
 import { TransactionReceipt, Provider } from "ethers/providers";
 import { abiEncodeWithSelector } from "./utils";
-import { BigNumber } from "ethers/utils";
+import { BigNumber, hexlify, getContractAddress } from "ethers/utils";
 import { defaultSetup } from "./defaultSetup";
 import { Signer, Contract, ContractFactory, ethers, utils } from "ethers";
+
+import { FakeTransaction, FakeTxData } from "ethereumjs-tx";
+import { BN } from "ethereumjs-util";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -93,37 +96,49 @@ export default function () {
     .setAction(
       async (
         _,
-        { ethers, erasure, ethereum }: BuidlerRuntimeEnvironment
+        { ethers, erasure, ethereum, config }: BuidlerRuntimeEnvironment
       ) => {
         const signers = await ethers.signers();
         const deployer = signers[0];
         const erasureSetup: ErasureSetup = erasure.getErasureSetup();
 
         const contracts: { [key: string]: Contract } = {}
+
+
         for (const setup of Object.values(erasureSetup)) {
           if (setup.type === 'token') {
-            // FIXME : hack to being able to deploy at a specific address
+
+            // FIXME : ugly hack to fake transaction into BuidlerEVM
             const nmrSigner = '0x9608010323ed882a38ede9211d7691102b4f0ba0';
-            signers[9].sendTransaction({ to: nmrSigner, value: utils.parseEther("2") })
-            const signer = await ethers.provider.getSigner(nmrSigner);
-            console.log(signer);
-            signer.sendTransaction({ to: nmrSigner, value: 0 })
-            const c = await erasure.deployContract(setup, nmrSigner);
-            contracts[setup.artifact] = c
-          }
+            await signers[9].sendTransaction({ to: nmrSigner, value: utils.parseEther("10") })
+            const fakeData: any = {
+              from: nmrSigner,
+              value: "0x0"
+            }
+            await (ethereum as any)._ethModule.processRequest('eth_sendFakeTransaction', [fakeData]);
+            const fakeDeployTx: any = {
+              from: nmrSigner,
+              gas: "0x5B8D80",
+              gasPrice: "0x2500",
+              data: readArtifactSync(config.paths.artifacts, 'MockNMR').bytecode
+            }
+            await (ethereum as any)._ethModule.processRequest('eth_sendFakeTransaction', [fakeDeployTx]);
+            const nmrAddress = getContractAddress({from: nmrSigner, nonce: 1})
+            const nmr = await ethers.getContract(setup.artifact)
+            contracts[setup.artifact] = nmr.attach(nmrAddress).connect(deployer);
+
+         }
         }
 
         for (const setup of Object.values(erasureSetup)) {
           if (setup.type === 'factory' || setup.type === 'token') continue;
-          // console.log('deploying', setup.artifact)
           const c = await erasure.deployContract(setup, deployer);
           contracts[setup.artifact] = c
-          // Object.assign(contracts[setup.artifact], c)
-          // Object.assign()
         }
+
+
         for (const setup of Object.values(erasureSetup)) {
           if (setup.type !== 'factory') continue;
-          // console.log('deploying', setup.artifact)
           const c = await erasure.deployContract(setup, deployer);
           contracts[setup.artifact] = c
         }
@@ -140,7 +155,6 @@ export default function () {
         ...userConfig.erasure.setup
       }
     }
-    // config.erasure = { ...config.erasure, ...userConfig.erasure }
   });
   extendEnvironment((env: BuidlerRuntimeEnvironment) => {
     const getSigner = async (account?: Signer | string) => {
@@ -429,11 +443,9 @@ export default function () {
 
           const templateSetup = getSetup(template) as TemplateSetup
           const factorySetup = getSetup(getFactoryName(template, templateSetup));
-          // console.log('aa')
+
           const factoryInstance = await env.erasure.getContractInstance(factorySetup.artifact, factorySetup.address);
           const templateInstance = await env.erasure.getContractInstance(templateSetup.artifact, templateSetup.address);
-
-          // console.log('addresses', factoryInstance.address, templateInstance.address);
 
           return env.erasure._createInstance(templateInstance, factoryInstance, params, values)
         },
