@@ -1,14 +1,17 @@
 export type RegistryNames = "Erasure_Agreements" | "Erasure_Posts";
-export type TemplateNames = "SimpleGriefing" | "CountdownGriefing" | "Post" | "Feed";
+export type TemplateNames =
+  | "SimpleGriefing"
+  | "CountdownGriefing"
+  | "CountdownGriefingEscrow"
+  | "Feed";
 export type ContractType = "token" | "registry" | "factory" | "template";
 
 export interface ContractSetup {
   type: ContractType;
   artifact: string;
   address?: string;
+  signer?: string;
 }
-
-export interface RegistrySetup extends ContractSetup { }
 
 export interface TemplateSetup extends ContractSetup {
   type: "template";
@@ -22,10 +25,12 @@ export interface FactorySetup extends ContractSetup {
 }
 
 export function isFactorySetup(setup: any): setup is FactorySetup {
-  return setup.type === 'factory'
+  return setup.type === "factory";
 }
 
 // updateContractAddress: (name: string, address: string) => ContractSetup;
-export interface ErasureSetup { 
-  [name: string]: ContractSetup | FactorySetup;
+export interface ErasureSetup {
+  contracts: { [name: string]: ContractSetup | FactorySetup };
+  publicId?: string;
+  secretKey?: string;
 }

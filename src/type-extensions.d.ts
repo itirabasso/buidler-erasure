@@ -3,10 +3,9 @@ import "@nomiclabs/buidler-ethers/src/type-extensions";
 import {
   ErasureSetup,
   FactorySetup,
-  RegistrySetup,
   RegistryNames,
   TemplateNames,
-  ContractSetup,
+  ContractSetup
 } from "./erasureSetup";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
@@ -14,15 +13,15 @@ import { TransactionReceipt } from "ethers/providers";
 import { Factory } from "./index";
 
 declare module "@nomiclabs/buidler/types" {
-
   export interface Networks {
-    [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup};
+    [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup };
+    // [networkName: string]: NetworkConfig & any;
   }
 
   export interface BuidlerConfig {
     erasure: {
       setup: { [networkName: string]: ErasureSetup };
-    },
+    };
   }
   export interface BuidlerRuntimeEnvironment {
     erasure: {
@@ -40,7 +39,10 @@ declare module "@nomiclabs/buidler/types" {
         params: any[],
         signer?: Signer | string
       ): Promise<[Contract, any]>;
-      deployContract(setup: ContractSetup, deployer?: Signer | string): Promise<Contract>;
+      deployContract(
+        setup: ContractSetup,
+        deployer?: Signer | string
+      ): Promise<Contract>;
       deployFactory(
         factorySetup: FactorySetup,
         signer?: Signer | string
@@ -53,14 +55,9 @@ declare module "@nomiclabs/buidler/types" {
       _createInstance(
         template: Contract,
         factory: Contract,
-        params: any[],
         values: any[]
       ): Promise<Contract>;
-      createInstance(
-        factory: TemplateNames,
-        params: any[],
-        values: any[]
-      ): Promise<Contract>;
+      createInstance(factory: TemplateNames, values: any[]): Promise<Contract>;
       createAgreement(
         operator: Signer | string,
         staker: Signer | string,
