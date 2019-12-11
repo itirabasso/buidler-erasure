@@ -21,9 +21,8 @@ import {
   BuidlerRuntimeEnvironment,
   NetworkConfig
 } from "@nomiclabs/buidler/types";
-import { pinJSONToIPFS } from "@pinata/sdk";
 import { decode, encode } from "ethereumjs-abi";
-import { Contract, Signer, utils } from "ethers";
+import { Contract, ContractFactory, Signer, utils } from "ethers";
 import { Provider } from "ethers/providers";
 import { base64, BigNumber } from "ethers/utils";
 import { existsSync } from "fs";
@@ -46,10 +45,7 @@ import {
   TemplateSetup
 } from "./erasureSetup";
 import { FakeSigner } from "./fakeSigner";
-import { asymmetric, ipfs, symmetric } from "./helper";
 import { abiEncodeWithSelector } from "./utils";
-import { ContractFactory } from "ethers";
-import { baySell } from "./quantUpload";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
@@ -89,17 +85,17 @@ export default function() {
   );
 
   task(TASK_TEST_SETUP_TEST_ENVIRONMENT, async (_, env, runSuper) => {
-    // await env.run("erasure:erasure-setup");
+    await env.run("erasure:erasure-setup");
     await runSuper();
   });
 
-  task(TASK_RUN, async (_, env, runSuper) => {
-    // await env.run("erasure:erasure-setup");
-    await runSuper();
-  });
+  // task(TASK_RUN, async (_, env, runSuper) => {
+  //   await env.run("erasure:erasure-setup");
+  //   await runSuper();
+  // });
 
   task(TASK_CLEAN, async (_, __, runSuper) => {
-    await runSuper();
+    // await runSuper();
     setInitialState();
     console.log("Deploy clean");
   });
@@ -136,7 +132,10 @@ export default function() {
 
           // await provider.send('buidler_impersonateAccount', [setup.signer]);
 
-          const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
+          const nmrSigner =
+            setup.signer === undefined
+              ? deployer
+              : new FakeSigner(setup.signer, ethers.provider);
           await signers[9].sendTransaction({
             to: setup.signer,
             value: utils.parseEther("10")
@@ -170,10 +169,11 @@ export default function() {
 
   extendConfig((config, userConfig) => {
     Object.keys(config.networks).forEach(name => {
-      if (config.networks[name] === undefined) {
-        (config.networks[name] as any) = { erasureSetup: defaultSetup };
+      if ((config.networks[name] as any).erasureSetup === undefined) {
+        (config.networks[name] as any).erasureSetup = defaultSetup;
       }
     });
+    return config;
   });
 
   extendEnvironment((env: BuidlerRuntimeEnvironment) => {
@@ -203,35 +203,11 @@ export default function() {
       const bytecode = artifact.bytecode;
       return new ContractFactory(artifact.abi, bytecode, signer);
     };
-    // const signers = await env.ethers.signers();
-    // etherlime wrapper to integrate buidler in the erasure-protocol tests
-    const etherlimeWrapper = (contract: Contract): Contract => {
-      Object.defineProperty(contract, "from", {
-        value: (signer: Signer) => {
-          // console.log('connecting to ', signer)
-          return contract.connect(signer);
-        }
-      });
-      Object.defineProperty(contract, "waitForReceipt", {
-        value: async (tx: any) => {
-          return env.ethers.provider.getTransactionReceipt(
-            tx === "string" ? tx : tx.hash
-          );
-        }
-      });
-      Object.defineProperty(contract, "verboseWaitForTransaction", {
-        value: async (tx: any) => contract.waitForReceipt(tx)
-      });
-      Object.defineProperty(contract, "contractAddress", {
-        get: () => contract.address
-      });
-      return contract;
-    };
 
     env.erasure = lazyObject(() => {
       const getChainId = createChainIdGetter(env.ethereum);
       return {
-        setup: env.config.erasure.setup[env.network.name],
+        setup: (env.network as any).erasureSetup,
         getDeployedAddresses: async (
           name: string,
           chainId?: number
@@ -332,11 +308,13 @@ export default function() {
               state[chainId][name] = addresses;
             }
           }
+
           // update state
           writeState(state);
         },
         getErasureSetup(): ErasureSetup {
-          return env.config.erasure.setup[env.network.name];
+          // return (env.config.networks[env.network.name] as any).erasureSetup;
+          return (env.network.config as any).erasureSetup.contracts;
         },
         deploy: async (
           contractName: string,
@@ -345,16 +323,16 @@ export default function() {
         ): Promise<[Contract, any]> => {
           const contractFactory = await getContract(contractName, signer);
           contractFactory.connect(await getSigner(signer));
-          // console.log(typeof(params));
-          const contract = await contractFactory.deploy(...params);
-          // await contract.deployed();
 
+          const contract = await contractFactory.deploy(...params);
+          await contract.deployed();
+
+          console.log("Deployed", contractName, "at", contract.address);
           await env.erasure.saveDeployedContract(contractName, contract);
           const receipt = await env.ethers.provider.getTransactionReceipt(
             contract.deployTransaction.hash!
           );
-          console.log("Deployed", contractName, "at", contract.address);
-          return [etherlimeWrapper(contract), receipt];
+          return [contract, receipt];
         },
         deployContract: async (
           setup: ContractSetup,
@@ -363,10 +341,8 @@ export default function() {
           let contract: Contract;
           if (setup.address === undefined) {
             if (isFactorySetup(setup)) {
-              // console.log('deploy factory')
               contract = await env.erasure.deployFactory(setup, deployer);
             } else {
-              // console.log('deploy contract')
               const ret = await env.erasure.deploy(
                 setup.artifact,
                 [],
@@ -375,7 +351,6 @@ export default function() {
               contract = ret[0];
             }
           } else {
-            // console.log('get instance of');
             contract = await env.erasure.getContractInstance(
               setup.artifact,
               setup.address,
@@ -395,13 +370,13 @@ export default function() {
           const template = await env.erasure.getContractInstance(
             setup.template
           );
-          // console.log('b', setup.artifact, registry.address, template.address)
+
           const [factory] = await env.erasure.deploy(
             setup.artifact,
             [registry.address, template.address],
             signer
           );
-          // console.log(await registry.signer.getAddress(), await factory.signer.getAddress())
+
           await registry.addFactory(factory.address, "0x");
           return factory;
         },
@@ -424,19 +399,17 @@ export default function() {
             }
           }
           if (address === undefined) {
-            throw new Error('unable to resolve' + name + 'address')
-          }
-          if (!Provider.isProvider(signer.provider)) {
-            throw new Error("signer has no provider");
+            throw new Error("unable to resolve" + name + "address");
           }
 
           const { abi, bytecode } = readArtifactSync(
             env.config.paths.artifacts,
-            name
+            setup.artifact
           );
+
           const factory = new ContractFactory(abi, bytecode, signer);
-          console.log("Connect", name, "to", address);
-          return etherlimeWrapper(factory.attach(address));
+          // console.log("Connect", name, "to", address);
+          return factory.attach(address);
         },
 
         // params: any[],
@@ -450,16 +423,8 @@ export default function() {
             e => e.type === "function" && e.name === "initialize"
           );
           const params = (initializeFunc as any).inputs.map((i: any) => i.type);
-          console.log("args:", params.length, values.length);
+
           const callData = abiEncodeWithSelector("initialize", params, values);
-          console.log(
-            "Factory creator signer:",
-            await factory.signer.getAddress()
-          );
-          console.log(
-            await factory.signer.getAddress(),
-            " is creasting an instance"
-          );
           const tx = await factory.create(callData);
 
           const receipt = await env.ethers.provider.getTransactionReceipt(
@@ -467,14 +432,12 @@ export default function() {
           );
           for (const log of receipt.logs!) {
             const event = factory.interface.parseLog(log);
-            // console.log(event);
             if (event !== null && event.name === "InstanceCreated") {
-              const c = new Contract(
+              return new Contract(
                 event.values.instance,
                 template.interface.abi,
                 factory.signer
               );
-              return etherlimeWrapper(c);
             }
           }
           throw new Error("unable to create an instance");
@@ -560,20 +523,6 @@ export default function() {
             values
           );
           return agreement;
-        },
-
-        baySell: async (
-          seller: Signer,
-          fileBuffer: Buffer,
-          description: string,
-          price: number,
-          stake: number,
-          escrowCountdown: number | BigNumber,
-          griefType: string,
-          griefRatio: number,
-          agreementCountdown: number
-        ): Promise<Contract> => {
-          return baySell(seller, fileBuffer, description, price, stake, escrowCountdown, griefType, griefRatio, agreementCountdown)
         }
       };
     });
