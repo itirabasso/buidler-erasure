@@ -106,9 +106,23 @@ export default function () {
       const deployer = signers[0];
       const erasureSetup: ErasureSetup = erasure.getErasureSetup();
 
+      const sortedContracts = Object.values(erasureSetup.contracts).sort(
+        setup => {
+          switch (setup.type) {
+            case "token":
+              return -1;
+            case "template":
+            case "registry":
+              return 0;
+            case "factory":
+              return 1;
+          }
+        }
+      );
+
       const contracts: { [key: string]: Contract } = {};
 
-      for (const setup of Object.values(erasureSetup.contracts)) {
+      for (const setup of sortedContracts) {
         switch (setup.type) {
           case "token":
             // create fake signer
@@ -128,10 +142,14 @@ export default function () {
             // use the deployed connected to the deployer signer.
             contracts[setup.artifact] = nmr.connect(deployer);
             break;
-          case "factory":
+
           case "registry":
           case "template":
-            contracts[setup.artifact] = await erasure.deployContract(setup, deployer);
+          case "factory":
+            contracts[setup.artifact] = await erasure.deployContract(
+              setup,
+              deployer
+            );
             break;
         }
       }
@@ -286,7 +304,7 @@ export default function () {
           // update state
           writeState(state);
         },
-        getErasureContracts(): any {
+        getErasureSetup(): ErasureSetup {
           // return (env.config.networks[env.network.name] as any).erasureSetup;
           return (env.network.config as any).erasureSetup;
         },
@@ -338,9 +356,11 @@ export default function () {
           signer: Signer | string
         ): Promise<Contract> => {
           signer = await getSigner(signer);
+
           const registry = await env.erasure.getContractInstance(
             setup.registry
           );
+
           const template = await env.erasure.getContractInstance(
             setup.template
           );
@@ -362,7 +382,7 @@ export default function () {
         ): Promise<Contract> => {
           const signer = await getSigner(account);
 
-          const setup = env.erasure.getErasureSetup()[name];
+          const setup = env.erasure.getErasureSetup().contracts[name];
           if (address === undefined) {
             if (setup.address === undefined) {
               address = (
@@ -423,7 +443,7 @@ export default function () {
           values: any[]
         ): Promise<Contract> => {
           const getSetup = (name: string): ContractSetup => {
-            const setup = env.erasure.getErasureSetup()[name];
+            const setup = env.erasure.getErasureSetup().contracts[name];
             if (setup === undefined) {
               throw new Error("Setup not found for " + name);
             }
