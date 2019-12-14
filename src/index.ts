@@ -66,12 +66,12 @@ export class Factory {
   constructor(
     public readonly factory: Contract,
     public readonly template: Contract
-  ) {}
+  ) { }
 }
 
-export class Template {}
+export class Template { }
 
-export default function() {
+export default function () {
   internalTask(
     "erasure:copy-contracts",
     "Temporal task. Copy the erasure protocol contracts into your project's sources folder.",
@@ -108,58 +108,32 @@ export default function() {
 
       const contracts: { [key: string]: Contract } = {};
 
-      for (const setup of Object.values(erasureSetup)) {
-        if (setup.type === "token") {
-          // FIXME : ugly hack to fake transaction into BuidlerEVM
-          // await signers[9].sendTransaction({ to: nmrSigner, value: utils.parseEther("10") })
-          // const fakeData: any = {
-          //   from: nmrSigner,
-          //   value: "0x0"
-          // }
-          // await (ethereum as any)._ethModule.processRequest('eth_sendFakeTransaction', [fakeData]);
-          // const fakeDeployTx: any = {
-          //   from: nmrSigner,
-          //   gas: "0x5B8D80",
-          //   gasPrice: "0x2500",
-          //   data: readArtifactSync(config.paths.artifacts, 'MockNMR').bytecode
-          // }
-          // await (ethereum as any)._ethModule.processRequest('eth_sendFakeTransaction', [fakeDeployTx]);
-          // const nmrAddress = getContractAddress({from: nmrSigner, nonce: 1})
-          // const nmr = await ethers.getContract(setup.artifact)
-          // contracts[setup.artifact] = nmr.attach(nmrAddress).connect(deployer);
+      for (const setup of Object.values(erasureSetup.contracts)) {
+        switch (setup.type) {
+          case "token":
+            // create fake signer
+            const nmrSigner =
+              setup.signer === undefined
+                ? deployer
+                : new FakeSigner(setup.signer, ethers.provider);
 
-          const { provider } = network;
-
-          // await provider.send('buidler_impersonateAccount', [setup.signer]);
-
-          const nmrSigner =
-            setup.signer === undefined
-              ? deployer
-              : new FakeSigner(setup.signer, ethers.provider);
-          await signers[9].sendTransaction({
-            to: setup.signer,
-            value: utils.parseEther("10")
-          });
-          await nmrSigner.sendTransaction({ to: setup.signer, value: 0 });
-          const nmr = await erasure.deployContract(setup, nmrSigner);
-          contracts[setup.artifact] = nmr.connect(deployer);
+            // send ether to the nmr signer
+            await signers[9].sendTransaction({
+              to: setup.signer,
+              value: utils.parseEther("10")
+            });
+            // increment nmr signer nonce by 1
+            await nmrSigner.sendTransaction({ to: setup.signer, value: 0 });
+            const nmr = await erasure.deployContract(setup, nmrSigner);
+            // use the deployed connected to the deployer signer.
+            contracts[setup.artifact] = nmr.connect(deployer);
+            break;
+          case "factory":
+          case "registry":
+          case "template":
+            contracts[setup.artifact] = await erasure.deployContract(setup, deployer);
+            break;
         }
-      }
-
-      for (const setup of Object.values(erasureSetup)) {
-        if (setup.type === "factory" || setup.type === "token") {
-          continue;
-        }
-        const c = await erasure.deployContract(setup, deployer);
-        contracts[setup.artifact] = c;
-      }
-
-      for (const setup of Object.values(erasureSetup)) {
-        if (setup.type !== "factory") {
-          continue;
-        }
-        const c = await erasure.deployContract(setup, deployer);
-        contracts[setup.artifact] = c;
       }
 
       console.log("Erasure deployed:", Object.keys(contracts));
@@ -181,8 +155,8 @@ export default function() {
       return account === undefined
         ? (await env.ethers.signers())[0]
         : typeof account === "string"
-        ? env.ethers.provider.getSigner(account)
-        : account;
+          ? env.ethers.provider.getSigner(account)
+          : account;
     };
     /**
      * converts every element in the following way:
@@ -312,9 +286,9 @@ export default function() {
           // update state
           writeState(state);
         },
-        getErasureSetup(): ErasureSetup {
+        getErasureContracts(): any {
           // return (env.config.networks[env.network.name] as any).erasureSetup;
-          return (env.network.config as any).erasureSetup.contracts;
+          return (env.network.config as any).erasureSetup;
         },
         deploy: async (
           contractName: string,
@@ -509,14 +483,14 @@ export default function() {
             countdown === undefined
               ? [operator, staker, counterparty, ratio, ratioType, metadata]
               : [
-                  operator,
-                  staker,
-                  counterparty,
-                  ratio,
-                  ratioType,
-                  countdown,
-                  metadata
-                ];
+                operator,
+                staker,
+                counterparty,
+                ratio,
+                ratioType,
+                countdown,
+                metadata
+              ];
 
           const agreement = await env.erasure.createInstance(
             agreementTemplate,
