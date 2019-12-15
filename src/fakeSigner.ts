@@ -3,16 +3,23 @@ import { Signer } from "ethers";
 import { TransactionRequest, TransactionResponse } from "ethers/providers";
 
 export class FakeSigner extends Signer {
+  public impersonated: boolean = false;
   constructor(public readonly address: string, public readonly provider: any) {
     super();
-    const canImpersonate = (this
-      .provider as EthereumProvider).send("buidler_impersonateAccount", [
-      address
-    ]);
+  }
 
-    if (!canImpersonate) {
-      throw new Error("provider doesnt not support impersonation");
+  public async impersonate(): Promise<boolean> {
+    try {
+      this.impersonated = await (this
+        .provider as EthereumProvider).send("buidler_impersonateAccount", [
+        this.address
+      ]);
+    } catch (error) {
+      console.error("provider does not support impersonation");
+      this.impersonated = false;
     }
+
+    return this.impersonated;
   }
 
   public async getAddress(): Promise<string> {
@@ -34,6 +41,7 @@ export class FakeSigner extends Signer {
       data: transaction.data,
       nonce: transaction.nonce
     };
+
     const txHash = await (this
       .provider as EthereumProvider).send("eth_sendFakeTransaction", [params]);
     const tx = await (this
