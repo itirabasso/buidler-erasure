@@ -66,12 +66,12 @@ export class Factory {
   constructor(
     public readonly factory: Contract,
     public readonly template: Contract
-  ) { }
+  ) {}
 }
 
-export class Template { }
+export class Template {}
 
-export default function () {
+export default function() {
   internalTask(
     "erasure:copy-contracts",
     "Temporal task. Copy the erasure protocol contracts into your project's sources folder.",
@@ -101,7 +101,7 @@ export default function () {
   });
 
   const deployNMRToken = async (setup, nmrSigner, { erasure, ethers }) => {
-    const signers = await ethers.signers()
+    const signers = await ethers.signers();
     if (await nmrSigner.impersonate()) {
       // send ether to the nmr signer
       await signers[9].sendTransaction({
@@ -118,7 +118,7 @@ export default function () {
       return erasure.deployContract(setup, nmrSigner);
     } else {
       if (erasure.getErasureSetup().nmrDeployTx === undefined) {
-        throw new Error('need a deploy tx')
+        throw new Error("need a deploy tx");
       }
 
       await ethers.provider.send("eth_sendRawTransaction", [
@@ -127,67 +127,69 @@ export default function () {
       // use the deployed connected to the deployer signer.
       // return nmr;
     }
-  }
+  };
 
   internalTask("erasure:erasure-setup")
-    .addOptionalParam('output', "erasure "
-      .setAction(
-        async (_, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
-          const signers = await ethers.signers();
-          const deployer = signers[0];
+    .addOptionalParam("output", "erasure ")
+    .setAction(async (_, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
+      const signers = await ethers.signers();
+      const deployer = signers[0];
 
-          const erasureSetup: ErasureSetup = erasure.getErasureSetup();
+      const erasureSetup: ErasureSetup = erasure.getErasureSetup();
 
-          const sortedContracts = Object.values(erasureSetup.contracts).sort(
-            setup => {
-              switch (setup.type) {
-                case "token":
-                  return -1;
-                case "template":
-                case "registry":
-                  return 0;
-                case "factory":
-                  return 1;
-              }
-            }
-          );
-
-          const contracts: { [key: string]: Contract } = {};
-
-          for (const setup of sortedContracts) {
-            if (setup.address === undefined) {
-              switch (setup.type) {
-                case "token":
-                  if (setup.signer === undefined) {
-                    setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
-                  }
-                  const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
-
-                  contracts[setup.artifact] = await deployNMRToken(setup, nmrSigner, { ethers, erasure })
-                  break;
-
-                case "registry":
-                case "template":
-                case "factory":
-                  contracts[setup.artifact] = await erasure.deployContract(
-                    setup,
-                    deployer
-                  );
-                  break;
-              }
-            } else {
-              contracts[setup.artifact] = await erasure.getContractInstance(
-                setup.artifact,
-                setup.address,
-                deployer
-              );
-            }
+      const sortedContracts = Object.values(erasureSetup.contracts).sort(
+        setup => {
+          switch (setup.type) {
+            case "token":
+              return -1;
+            case "template":
+            case "registry":
+              return 0;
+            case "factory":
+              return 1;
           }
-
-          console.log("Erasure deployed:", Object.keys(contracts));
-          return contracts;
         }
       );
+
+      const contracts: { [key: string]: Contract } = {};
+
+      for (const setup of sortedContracts) {
+        if (setup.address === undefined) {
+          switch (setup.type) {
+            case "token":
+              if (setup.signer === undefined) {
+                setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
+              }
+              const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
+
+              contracts[setup.artifact] = await deployNMRToken(
+                setup,
+                nmrSigner,
+                { ethers, erasure }
+              );
+              break;
+
+            case "registry":
+            case "template":
+            case "factory":
+              contracts[setup.artifact] = await erasure.deployContract(
+                setup,
+                deployer
+              );
+              break;
+          }
+        } else {
+          contracts[setup.artifact] = await erasure.getContractInstance(
+            setup.artifact,
+            setup.address,
+            deployer
+          );
+        }
+      }
+
+      console.log("Erasure deployed:", Object.keys(contracts));
+      return contracts;
+    });
 
   extendConfig((config, userConfig) => {
     Object.keys(config.networks).forEach(name => {
@@ -203,8 +205,8 @@ export default function () {
       return account === undefined
         ? (await env.ethers.signers())[0]
         : typeof account === "string"
-          ? env.ethers.provider.getSigner(account)
-          : account;
+        ? env.ethers.provider.getSigner(account)
+        : account;
     };
 
     /**
@@ -228,15 +230,20 @@ export default function () {
     };
 
     env.erasure = lazyObject(() => {
-      const getChainId = createChainIdGetter(env.ethereum);
-      const getChain = async (chainId?: number): Promise<number> => {
+      const chainIdGetter = createChainIdGetter(env.ethereum);
+      const getChainId = async (chainId?: number): Promise<number> => {
         if (chainId === undefined) {
-          chainId = env.network.config.chainId === undefined
-            ? await getChainId()
-            : env.network.config.chainId
+          chainId =
+            env.network.config.chainId === undefined
+              ? await chainIdGetter()
+              : env.network.config.chainId;
         }
-        return chainId
-      }
+        return chainId;
+      };
+      const isDeployed = (state, chainId, name) =>
+        state[chainId] !== undefined &&
+        state[chainId][name] !== undefined &&
+        state[chainId][name].length > 0;
 
       return {
         setup: (env.network as any).erasureSetup,
@@ -245,13 +252,9 @@ export default function () {
           chainId?: number
         ): Promise<string[]> => {
           const state = readState();
-          chainId = await getChain(chainId)
+          chainId = await getChainId(chainId);
 
-          if (
-            state[chainId] === undefined ||
-            state[chainId][name] === undefined ||
-            state[chainId][name].length === 0
-          ) {
+          if (!isDeployed(state, chainId, name)) {
             // chainId wasn't used before or contract wasn't deployed
             return [];
           }
@@ -297,29 +300,15 @@ export default function () {
             throw new Error("saving contract with no name");
           }
 
-          const chainId =
-            env.network.config.chainId === undefined
-              ? await getChainId()
-              : env.network.config.chainId;
-
-          const isDeployed =
-            state[chainId] !== undefined &&
-            state[chainId][name] !== undefined &&
-            state[chainId][name].length > 0;
+          const chainId = await getChainId();
 
           // is it already deployed?
-          if (isDeployed) {
+          if (isDeployed(state, chainId, name)) {
             const [last, ...previous] = state[chainId][name];
 
             if (last !== instance.address) {
               // place the new instance address first to the list
               state[chainId][name] = [instance.address, last, ...previous];
-            } else {
-              // If the last deployed instance has the same address as the new instance,
-              // do not update the list of addresses
-              // console.warn(
-              //   "The last deployed contract has the same address as the new one"
-              // );
             }
           } else {
             const addresses = [instance.address];
@@ -539,14 +528,14 @@ export default function () {
             countdown === undefined
               ? [operator, staker, counterparty, ratio, ratioType, metadata]
               : [
-                operator,
-                staker,
-                counterparty,
-                ratio,
-                ratioType,
-                countdown,
-                metadata
-              ];
+                  operator,
+                  staker,
+                  counterparty,
+                  ratio,
+                  ratioType,
+                  countdown,
+                  metadata
+                ];
 
           const agreement = await env.erasure.createInstance(
             agreementTemplate,
