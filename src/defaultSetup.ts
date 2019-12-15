@@ -16,7 +16,7 @@ const nmrSigner = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
 
 export const defaultSetup: ErasureSetup = {
   contracts: {
-    NMR: {
+    MockNMR: {
       type: "token",
       artifact: "MockNMR",
       signer: nmrSigner

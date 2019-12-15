@@ -100,10 +100,40 @@ export default function () {
     console.log("Deploy clean");
   });
 
+  const deployNMRToken = async (setup, nmrSigner, { erasure, ethers }) => {
+    const signers = await ethers.signers()
+    if (await nmrSigner.impersonate()) {
+      // send ether to the nmr signer
+      await signers[9].sendTransaction({
+        to: setup.signer,
+        value: utils.parseEther("5")
+      });
+
+      // increment nmr signer nonce by 1
+      await nmrSigner.sendTransaction({
+        to: setup.signer,
+        value: 0
+      });
+
+      return erasure.deployContract(setup, nmrSigner);
+    } else {
+      if (erasure.getErasureSetup().nmrDeployTx === undefined) {
+        throw new Error('need a deploy tx')
+      }
+
+      await ethers.provider.send("eth_sendRawTransaction", [
+        erasure.getErasureSetup().nmrDeployTx
+      ]);
+      // use the deployed connected to the deployer signer.
+      // return nmr;
+    }
+  }
+
   internalTask("erasure:erasure-setup").setAction(
     async (_, { ethers, erasure, network }: BuidlerRuntimeEnvironment) => {
       const signers = await ethers.signers();
       const deployer = signers[0];
+
       const erasureSetup: ErasureSetup = erasure.getErasureSetup();
 
       const sortedContracts = Object.values(erasureSetup.contracts).sort(
@@ -123,34 +153,32 @@ export default function () {
       const contracts: { [key: string]: Contract } = {};
 
       for (const setup of sortedContracts) {
-        switch (setup.type) {
-          case "token":
-            // create fake signer
-            const nmrSigner =
-              setup.signer === undefined
-                ? deployer
-                : new FakeSigner(setup.signer, ethers.provider);
+        if (setup.address === undefined) {
+          switch (setup.type) {
+            case "token":
+              if (setup.signer === undefined) {
+                setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
+              }
+              const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
 
-            // send ether to the nmr signer
-            await signers[9].sendTransaction({
-              to: setup.signer,
-              value: utils.parseEther("10")
-            });
-            // increment nmr signer nonce by 1
-            await nmrSigner.sendTransaction({ to: setup.signer, value: 0 });
-            const nmr = await erasure.deployContract(setup, nmrSigner);
-            // use the deployed connected to the deployer signer.
-            contracts[setup.artifact] = nmr.connect(deployer);
-            break;
+              contracts[setup.artifact] = await deployNMRToken(setup, nmrSigner, { ethers, erasure })
+              break;
 
-          case "registry":
-          case "template":
-          case "factory":
-            contracts[setup.artifact] = await erasure.deployContract(
-              setup,
-              deployer
-            );
-            break;
+            case "registry":
+            case "template":
+            case "factory":
+              contracts[setup.artifact] = await erasure.deployContract(
+                setup,
+                deployer
+              );
+              break;
+          }
+        } else {
+          contracts[setup.artifact] = await erasure.getContractInstance(
+            setup.artifact,
+            setup.address,
+            deployer
+          );
         }
       }
 
@@ -400,7 +428,6 @@ export default function () {
             env.config.paths.artifacts,
             setup.artifact
           );
-
           const factory = new ContractFactory(abi, bytecode, signer);
           // console.log("Connect", name, "to", address);
           return factory.attach(address);
@@ -421,9 +448,12 @@ export default function () {
           const callData = abiEncodeWithSelector("initialize", params, values);
           const tx = await factory.create(callData);
 
+          await tx.wait();
+
           const receipt = await env.ethers.provider.getTransactionReceipt(
             tx.hash
           );
+
           for (const log of receipt.logs!) {
             const event = factory.interface.parseLog(log);
             if (event !== null && event.name === "InstanceCreated") {

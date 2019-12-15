@@ -31,6 +31,5 @@ export function isFactorySetup(setup: any): setup is FactorySetup {
 // updateContractAddress: (name: string, address: string) => ContractSetup;
 export interface ErasureSetup {
   contracts: { [name: string]: ContractSetup | FactorySetup };
-  publicId?: string;
-  secretKey?: string;
+  nmrDeployTx?: string;
 }
