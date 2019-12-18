@@ -15,7 +15,6 @@ import { Factory } from "./index";
 declare module "@nomiclabs/buidler/types" {
   export interface Networks {
     [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup };
-    // [networkName: string]: NetworkConfig & any;
   }
 
   export interface BuidlerConfig {
@@ -58,15 +57,6 @@ declare module "@nomiclabs/buidler/types" {
         values: any[]
       ): Promise<Contract>;
       createInstance(factory: TemplateNames, values: any[]): Promise<Contract>;
-      createAgreement(
-        operator: Signer | string,
-        staker: Signer | string,
-        counterparty: Signer | string,
-        ratio: number | BigNumber,
-        ratioType: 1 | 2 | 3, // TODO : define a type for this
-        countdown?: number,
-        metadata?: string
-      ): Promise<Contract>;
     };
   }
 }

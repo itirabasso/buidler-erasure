@@ -1,6 +1,5 @@
 import {
   TASK_CLEAN,
-  TASK_RUN,
   TASK_TEST_SETUP_TEST_ENVIRONMENT
 } from "@nomiclabs/buidler/builtin-tasks/task-names";
 import {
@@ -17,23 +16,11 @@ import {
   readArtifact,
   readArtifactSync
 } from "@nomiclabs/buidler/plugins";
-import {
-  BuidlerRuntimeEnvironment,
-  NetworkConfig
-} from "@nomiclabs/buidler/types";
-import { decode, encode } from "ethereumjs-abi";
+import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract, ContractFactory, Signer, utils } from "ethers";
-import { Provider } from "ethers/providers";
-import { base64, BigNumber } from "ethers/utils";
+import { BigNumber } from "ethers/utils";
 import { existsSync } from "fs";
-import {
-  copy,
-  ensureDir,
-  ensureFileSync,
-  readJsonSync,
-  writeJSONSync
-} from "fs-extra";
-import { join } from "path";
+import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
 
 import { defaultSetup } from "./defaultSetup";
 import {
@@ -72,27 +59,10 @@ export class Factory {
 export class Template {}
 
 export default function() {
-  internalTask(
-    "erasure:copy-contracts",
-    "Temporal task. Copy the erasure protocol contracts into your project's sources folder.",
-    async (_, { config }) => {
-      await ensureDir(config.paths.sources);
-      await copy(
-        join(config.paths.root, "/node_modules/erasure-protocol/contracts"),
-        config.paths.sources
-      );
-    }
-  );
-
   task(TASK_TEST_SETUP_TEST_ENVIRONMENT, async (_, env, runSuper) => {
     await env.run("erasure:erasure-setup");
     await runSuper();
   });
-
-  // task(TASK_RUN, async (_, env, runSuper) => {
-  //   await env.run("erasure:erasure-setup");
-  //   await runSuper();
-  // });
 
   task(TASK_CLEAN, async (_, __, runSuper) => {
     // await runSuper();
@@ -129,9 +99,8 @@ export default function() {
     }
   };
 
-  internalTask("erasure:erasure-setup")
-    .addOptionalParam("output", "erasure ")
-    .setAction(async (_, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
+  internalTask("erasure:erasure-setup").setAction(
+    async (_, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
       const signers = await ethers.signers();
       const deployer = signers[0];
 
@@ -189,7 +158,8 @@ export default function() {
 
       console.log("Erasure deployed:", Object.keys(contracts));
       return contracts;
-    });
+    }
+  );
 
   extendConfig((config, userConfig) => {
     Object.keys(config.networks).forEach(name => {
@@ -504,44 +474,6 @@ export default function() {
             factoryInstance,
             values
           );
-        },
-
-        // Creates a agreement
-        createAgreement: async (
-          operator: Signer | string,
-          staker: Signer | string,
-          counterparty: Signer | string,
-          ratio: number | BigNumber,
-          ratioType: 1 | 2 | 3, // TODO : define a type for this
-          countdown?: number,
-          metadata: string = "0x0"
-        ): Promise<Contract> => {
-          // ratio = typeof (ratio) === 'number' ? new BigNumber(ratio) : ratio;
-          const agreementTemplate: TemplateNames =
-            countdown === undefined ? "SimpleGriefing" : "CountdownGriefing";
-
-          // const params =
-          //   countdown === undefined
-          //     ? ["address", "address", "address", "uint256", "uint8", "bytes"]
-          //     : ["address", "address", "address", "uint256", "uint8", "uint256", "bytes"];
-          const values =
-            countdown === undefined
-              ? [operator, staker, counterparty, ratio, ratioType, metadata]
-              : [
-                  operator,
-                  staker,
-                  counterparty,
-                  ratio,
-                  ratioType,
-                  countdown,
-                  metadata
-                ];
-
-          const agreement = await env.erasure.createInstance(
-            agreementTemplate,
-            values
-          );
-          return agreement;
         }
       };
     });
