@@ -10,472 +10,136 @@ import {
   usePlugin
 } from "@nomiclabs/buidler/config";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
-import {
-  ensurePluginLoadedWithUsePlugin,
-  lazyObject,
-  readArtifact,
-  readArtifactSync
-} from "@nomiclabs/buidler/plugins";
+import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { Contract, ContractFactory, Signer, utils } from "ethers";
-import { BigNumber } from "ethers/utils";
-import { existsSync } from "fs";
-import { ensureFileSync, readJsonSync, writeJSONSync } from "fs-extra";
+import { Contract, utils } from "ethers";
 
 import { defaultSetup } from "./defaultSetup";
-import {
-  ContractSetup,
-  ErasureSetup,
-  FactorySetup,
-  isFactorySetup,
-  TemplateNames,
-  TemplateSetup
-} from "./erasureSetup";
+import { Deployments } from "./deployments";
+import { Erasure } from "./erasure";
+import { ErasureSetup } from "./erasureSetup";
 import { FakeSigner } from "./fakeSigner";
-import { abiEncodeWithSelector } from "./utils";
+import { ensureStateFile, setInitialState } from "./utils";
 
 usePlugin("@nomiclabs/buidler-ethers");
 ensurePluginLoadedWithUsePlugin();
 
-// TODO : this can be placed into the buidler's config.
-const stateFilename = "state.json";
-const readState = (): any => readJsonSync(stateFilename);
-const writeState = (state: any): any => writeJSONSync(stateFilename, state);
-const setInitialState = () => writeState({});
-
 // if the state file doesn't exist, it's created.
-if (!existsSync(stateFilename)) {
-  ensureFileSync(stateFilename);
+ensureStateFile();
+
+task(TASK_TEST_SETUP_TEST_ENVIRONMENT, async (_, env, runSuper) => {
+  await env.run("erasure:erasure-setup");
+  await runSuper();
+});
+
+task(TASK_CLEAN, async (_, __, runSuper) => {
+  // await runSuper();
   setInitialState();
-}
+  console.log("Deploy clean");
+});
 
-export class Factory {
-  constructor(
-    public readonly factory: Contract,
-    public readonly template: Contract
-  ) {}
-}
-
-export class Template {}
-
-export default function() {
-  task(TASK_TEST_SETUP_TEST_ENVIRONMENT, async (_, env, runSuper) => {
-    await env.run("erasure:erasure-setup");
-    await runSuper();
-  });
-
-  task(TASK_CLEAN, async (_, __, runSuper) => {
-    // await runSuper();
-    setInitialState();
-    console.log("Deploy clean");
-  });
-
-  const deployNMRToken = async (setup, nmrSigner, { erasure, ethers }) => {
-    const signers = await ethers.signers();
-    if (await nmrSigner.impersonate()) {
-      // send ether to the nmr signer
-      await signers[9].sendTransaction({
-        to: setup.signer,
-        value: utils.parseEther("5")
-      });
-
-      // increment nmr signer nonce by 1
-      await nmrSigner.sendTransaction({
-        to: setup.signer,
-        value: 0
-      });
-
-      return erasure.deployContract(setup, nmrSigner);
-    } else {
-      if (erasure.getErasureSetup().nmrDeployTx === undefined) {
-        throw new Error("need a deploy tx");
-      }
-
-      await ethers.provider.send("eth_sendRawTransaction", [
-        erasure.getErasureSetup().nmrDeployTx
-      ]);
-      // use the deployed connected to the deployer signer.
-      // return nmr;
-    }
-  };
-
-  internalTask("erasure:erasure-setup").setAction(
-    async (_, { ethers, erasure }: BuidlerRuntimeEnvironment) => {
-      const signers = await ethers.signers();
-      const deployer = signers[0];
-
-      const erasureSetup: ErasureSetup = erasure.getErasureSetup();
-
-      const sortedContracts = Object.values(erasureSetup.contracts).sort(
-        setup => {
-          switch (setup.type) {
-            case "token":
-              return -1;
-            case "template":
-            case "registry":
-              return 0;
-            case "factory":
-              return 1;
-          }
-        }
-      );
-
-      const contracts: { [key: string]: Contract } = {};
-
-      for (const setup of sortedContracts) {
-        if (setup.address === undefined) {
-          switch (setup.type) {
-            case "token":
-              if (setup.signer === undefined) {
-                setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
-              }
-              const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
-
-              contracts[setup.artifact] = await deployNMRToken(
-                setup,
-                nmrSigner,
-                { ethers, erasure }
-              );
-              break;
-
-            case "registry":
-            case "template":
-            case "factory":
-              contracts[setup.artifact] = await erasure.deployContract(
-                setup,
-                deployer
-              );
-              break;
-          }
-        } else {
-          contracts[setup.artifact] = await erasure.getContractInstance(
-            setup.artifact,
-            setup.address,
-            deployer
-          );
-        }
-      }
-
-      console.log("Erasure deployed:", Object.keys(contracts));
-      return contracts;
-    }
-  );
-
-  extendConfig((config, userConfig) => {
-    Object.keys(config.networks).forEach(name => {
-      if ((config.networks[name] as any).erasureSetup === undefined) {
-        (config.networks[name] as any).erasureSetup = defaultSetup;
-      }
+const deployNMRToken = async (setup, nmrSigner, { erasure, ethers }) => {
+  const signers = await ethers.signers();
+  if (await nmrSigner.impersonate()) {
+    // send ether to the nmr signer
+    await signers[9].sendTransaction({
+      to: setup.signer,
+      value: utils.parseEther("5")
     });
-    return config;
-  });
 
-  extendEnvironment((env: BuidlerRuntimeEnvironment) => {
-    const getSigner = async (account?: Signer | string) => {
-      return account === undefined
-        ? (await env.ethers.signers())[0]
-        : typeof account === "string"
-        ? env.ethers.provider.getSigner(account)
-        : account;
-    };
+    // increment nmr signer nonce by 1
+    await nmrSigner.sendTransaction({
+      to: setup.signer,
+      value: 0
+    });
 
-    /**
-     * converts every element in the following way:
-     *   any signer into an address
-     *   any number into a big number
-     */
-    const processValues = async (dirtyValues: any[]) => {
-      let v = await Promise.all(
-        dirtyValues.map(val => (Signer.isSigner(val) ? val.getAddress() : val))
-      );
-      v = v.map(val => (typeof val === "number" ? new BigNumber(val) : val));
-      return v;
-    };
+    return erasure.deployContract(setup, nmrSigner);
+  } else {
+    if (erasure.getErasureSetup().nmrDeployTx === undefined) {
+      throw new Error("need a deploy tx");
+    }
 
-    const getContract = async (name: string, signer?: Signer | string) => {
-      signer = await getSigner(signer);
-      const artifact = await readArtifact(env.config.paths.artifacts, name);
-      const bytecode = artifact.bytecode;
-      return new ContractFactory(artifact.abi, bytecode, signer);
-    };
+    await ethers.provider.send("eth_sendRawTransaction", [
+      erasure.getErasureSetup().nmrDeployTx
+    ]);
 
-    env.erasure = lazyObject(() => {
-      const chainIdGetter = createChainIdGetter(env.ethereum);
-      const getChainId = async (chainId?: number): Promise<number> => {
-        if (chainId === undefined) {
-          chainId =
-            env.network.config.chainId === undefined
-              ? await chainIdGetter()
-              : env.network.config.chainId;
+    // use the deployed connected to the deployer signer.
+    // return nmr;
+  }
+};
+
+internalTask("erasure:erasure-setup").setAction(
+  async (_, { erasure, ethers }: BuidlerRuntimeEnvironment) => {
+    const signers = await ethers.signers();
+    const deployer = signers[0];
+
+    const erasureSetup: ErasureSetup = erasure.getErasureSetup();
+
+    const sortedContracts = Object.values(erasureSetup.contracts).sort(
+      setup => {
+        switch (setup.type) {
+          case "token":
+            return -1;
+          case "template":
+          case "registry":
+            return 0;
+          case "factory":
+            return 1;
         }
-        return chainId;
-      };
-      const isDeployed = (state, chainId, name) =>
-        state[chainId] !== undefined &&
-        state[chainId][name] !== undefined &&
-        state[chainId][name].length > 0;
+      }
+    );
 
-      return {
-        setup: (env.network as any).erasureSetup,
-        getDeployedAddresses: async (
-          name: string,
-          chainId?: number
-        ): Promise<string[]> => {
-          const state = readState();
-          chainId = await getChainId(chainId);
+    const contracts: { [key: string]: Contract } = {};
 
-          if (!isDeployed(state, chainId, name)) {
-            // chainId wasn't used before or contract wasn't deployed
-            return [];
-          }
-
-          return state[chainId][name];
-        },
-
-        getLastDeployedContract: async (
-          name: string,
-          chainId?: number
-        ): Promise<Contract> => {
-          return (await env.erasure.getDeployedContracts(name, chainId))[0];
-        },
-        getDeployedContracts: async (
-          name: string,
-          chainId?: number
-        ): Promise<Contract[]> => {
-          const factory = await getContract(name);
-          const addresses = await env.erasure.getDeployedAddresses(
-            name,
-            chainId
-          );
-          const artifact = readArtifactSync(env.config.paths.artifacts, name);
-
-          // TODO : should use deployedBytecode instead?
-          if (artifact.bytecode !== factory.bytecode) {
-            console.warn(
-              "Deployed contract",
-              name,
-              " does not match compiled local contract"
-            );
-          }
-
-          return addresses.map((addr: string) => factory.attach(addr));
-        },
-
-        saveDeployedContract: async (
-          name: string,
-          instance: any
-        ): Promise<void> => {
-          const state = readState();
-          if (name === undefined) {
-            throw new Error("saving contract with no name");
-          }
-
-          const chainId = await getChainId();
-
-          // is it already deployed?
-          if (isDeployed(state, chainId, name)) {
-            const [last, ...previous] = state[chainId][name];
-
-            if (last !== instance.address) {
-              // place the new instance address first to the list
-              state[chainId][name] = [instance.address, last, ...previous];
+    for (const setup of sortedContracts) {
+      if (setup.address === undefined) {
+        switch (setup.type) {
+          case "token":
+            if (setup.signer === undefined) {
+              setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
             }
-          } else {
-            const addresses = [instance.address];
-            // check if the chain is defined.
-            if (state[chainId] === undefined) {
-              // place the first contract with this chainId
-              state[chainId] = {
-                [name]: addresses
-              };
-            } else {
-              // just add the new contract to the state.
-              state[chainId][name] = addresses;
-            }
-          }
+            const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
 
-          // update state
-          writeState(state);
-        },
-        getErasureSetup(): ErasureSetup {
-          // return (env.config.networks[env.network.name] as any).erasureSetup;
-          return (env.network.config as any).erasureSetup;
-        },
-        deploy: async (
-          contractName: string,
-          params: any[],
-          signer?: Signer | string
-        ): Promise<[Contract, any]> => {
-          const contractFactory = await getContract(contractName, signer);
-          contractFactory.connect(await getSigner(signer));
+            contracts[setup.artifact] = await deployNMRToken(setup, nmrSigner, {
+              ethers,
+              erasure
+            });
+            break;
 
-          const contract = await contractFactory.deploy(...params);
-          await contract.deployed();
-
-          console.log("Deployed", contractName, "at", contract.address);
-          await env.erasure.saveDeployedContract(contractName, contract);
-          const receipt = await env.ethers.provider.getTransactionReceipt(
-            contract.deployTransaction.hash!
-          );
-          return [contract, receipt];
-        },
-        deployContract: async (
-          setup: ContractSetup,
-          deployer?: Signer | string
-        ): Promise<Contract> => {
-          let contract: Contract;
-          if (setup.address === undefined) {
-            if (isFactorySetup(setup)) {
-              contract = await env.erasure.deployFactory(setup, deployer);
-            } else {
-              const ret = await env.erasure.deploy(
-                setup.artifact,
-                [],
-                deployer
-              );
-              contract = ret[0];
-            }
-          } else {
-            contract = await env.erasure.getContractInstance(
-              setup.artifact,
-              setup.address,
+          case "registry":
+          case "template":
+          case "factory":
+            contracts[setup.artifact] = await erasure.deployContract(
+              setup,
               deployer
             );
-          }
-          return contract;
-        },
-        deployFactory: async (
-          setup: FactorySetup,
-          signer: Signer | string
-        ): Promise<Contract> => {
-          signer = await getSigner(signer);
-
-          const registry = await env.erasure.getContractInstance(
-            setup.registry
-          );
-
-          const template = await env.erasure.getContractInstance(
-            setup.template
-          );
-
-          const [factory] = await env.erasure.deploy(
-            setup.artifact,
-            [registry.address, template.address],
-            signer
-          );
-
-          await registry.addFactory(factory.address, "0x");
-          return factory;
-        },
-
-        getContractInstance: async (
-          name: string,
-          address?: string,
-          account?: string | Signer
-        ): Promise<Contract> => {
-          const signer = await getSigner(account);
-
-          const setup = env.erasure.getErasureSetup().contracts[name];
-          if (address === undefined) {
-            if (setup.address === undefined) {
-              address = (
-                await env.erasure.getLastDeployedContract(setup.artifact)
-              ).address;
-            } else {
-              address = setup.address;
-            }
-          }
-          if (address === undefined) {
-            throw new Error("unable to resolve" + name + "address");
-          }
-
-          const { abi, bytecode } = readArtifactSync(
-            env.config.paths.artifacts,
-            setup.artifact
-          );
-          const factory = new ContractFactory(abi, bytecode, signer);
-          // console.log("Connect", name, "to", address);
-          return factory.attach(address);
-        },
-
-        // params: any[],
-        _createInstance: async (
-          template: Contract,
-          factory: Contract,
-          values: any[]
-        ): Promise<Contract> => {
-          values = await processValues(values);
-          const initializeFunc = template.interface.abi.find(
-            e => e.type === "function" && e.name === "initialize"
-          );
-          const params = (initializeFunc as any).inputs.map((i: any) => i.type);
-
-          const callData = abiEncodeWithSelector("initialize", params, values);
-          const tx = await factory.create(callData);
-
-          await tx.wait();
-
-          const receipt = await env.ethers.provider.getTransactionReceipt(
-            tx.hash
-          );
-
-          for (const log of receipt.logs!) {
-            const event = factory.interface.parseLog(log);
-            if (event !== null && event.name === "InstanceCreated") {
-              return new Contract(
-                event.values.instance,
-                template.interface.abi,
-                factory.signer
-              );
-            }
-          }
-          throw new Error("unable to create an instance");
-        },
-
-        // Creates an instance from a Factory.
-        createInstance: async (
-          template: TemplateNames,
-          values: any[]
-        ): Promise<Contract> => {
-          const getSetup = (name: string): ContractSetup => {
-            const setup = env.erasure.getErasureSetup().contracts[name];
-            if (setup === undefined) {
-              throw new Error("Setup not found for " + name);
-            }
-            return setup;
-          };
-
-          const getFactoryName = (
-            name: TemplateNames,
-            setup: TemplateSetup
-          ) => {
-            // TODO : the suffix can be configurable
-            return setup.factory !== undefined
-              ? setup.factory
-              : name + "_Factory";
-          };
-
-          const templateSetup = getSetup(template) as TemplateSetup;
-          const factorySetup = getSetup(
-            getFactoryName(template, templateSetup)
-          );
-
-          const factoryInstance = await env.erasure.getContractInstance(
-            factorySetup.artifact,
-            factorySetup.address
-          );
-          const templateInstance = await env.erasure.getContractInstance(
-            templateSetup.artifact,
-            templateSetup.address
-          );
-
-          return env.erasure._createInstance(
-            templateInstance,
-            factoryInstance,
-            values
-          );
+            break;
         }
-      };
-    });
+      } else {
+        contracts[setup.artifact] = await erasure.getContractInstance(
+          setup.artifact,
+          setup.address,
+          deployer
+        );
+      }
+    }
+
+    console.log("Erasure deployed:", Object.keys(contracts));
+    return contracts;
+  }
+);
+
+extendConfig((config, userConfig) => {
+  Object.keys(config.networks).forEach(name => {
+    if ((config.networks[name] as any).erasureSetup === undefined) {
+      (config.networks[name] as any).erasureSetup = defaultSetup;
+    }
   });
-}
+  return config;
+});
+
+extendEnvironment((env: BuidlerRuntimeEnvironment) => {
+  const chainIdGetter = createChainIdGetter(env.ethereum);
+  env.erasure = new Erasure(env);
+  env.deployments = new Deployments(env, chainIdGetter);
+});

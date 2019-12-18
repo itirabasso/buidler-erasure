@@ -1,4 +1,10 @@
 import { ethers, utils } from "ethers";
+import {
+  ensureFileSync,
+  existsSync,
+  readJsonSync,
+  writeJSONSync
+} from "fs-extra";
 
 export function createSelector(
   functionName: string,
@@ -34,3 +40,20 @@ export function abiEncodeWithSelector(
   const encoded = selector + initData.slice(2);
   return encoded;
 }
+
+// TODO : this can be placed into the buidler's config.
+const stateFilename = "state.json";
+
+export const readState = (): any => readJsonSync(stateFilename);
+
+export const writeState = (state: any): any =>
+  writeJSONSync(stateFilename, state);
+
+export const setInitialState = () => writeState({});
+
+export const ensureStateFile = () => {
+  if (!existsSync(stateFilename)) {
+    ensureFileSync(stateFilename);
+    setInitialState();
+  }
+};

@@ -1,8 +1,8 @@
 // tslint:disable-next-line no-implicit-dependencies
 import { assert } from "chai";
 
-import { useEnvironment } from "./helpers";
 import { FactorySetup } from "./erasureSetup";
+import { useEnvironment } from "./helpers";
 
 describe("Integration tests examples", function() {
   describe("Buidler Runtime Environment extension", async function() {
@@ -22,9 +22,9 @@ describe("Integration tests examples", function() {
         "erasure:stake"
       ]);
     });
-    it("should deploy a registry", async function() {
-    });
-    it("should deploy a factory", async function() {
+    it("should deploy all the contracts", async function() {
+      const { erasure } = this.env;
+      // erasure.getContractInstance()
     });
   });
 });

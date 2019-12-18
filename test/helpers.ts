@@ -10,10 +10,13 @@ declare module "mocha" {
 export function useEnvironment(projectPath: string) {
   let previousCWD: string;
 
-  beforeEach("Loading buidler environment", function() {
+  beforeEach("Loading buidler environment", async function() {
     previousCWD = process.cwd();
     process.chdir(projectPath);
     this.env = require("@nomiclabs/buidler");
+
+    const contracts = await this.env.run("erasure:erasure-setup");
+    console.log("contracts", contracts);
 
     // this.env.erasure.deploySetup = {
     //   nmrToken: "NMR",
