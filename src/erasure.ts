@@ -12,18 +12,19 @@ import {
   TemplateSetup
 } from "./erasureSetup";
 import { abiEncodeWithSelector } from "./utils";
+import { ContractConfig } from "./deployments";
 
 export class Factory {
   constructor(
     public readonly factory: Contract,
     public readonly template: Contract
-  ) {}
+  ) { }
 }
 
-export class Template {}
+export class Template { }
 
 export class Erasure {
-  constructor(public readonly env: BuidlerRuntimeEnvironment) {}
+  constructor(public readonly env: BuidlerRuntimeEnvironment) { }
 
   public getErasureSetup(): ErasureSetup {
     // return (env.config.networks[env.network.name] as any).erasureSetup;
@@ -31,28 +32,29 @@ export class Erasure {
   }
 
   public async deployContract(
-    setup: ContractSetup,
+    setup: ContractConfig,
     deployer?: Signer | string
   ): Promise<Contract> {
     let contract: Contract;
-    if (setup.address === undefined) {
-      if (isFactorySetup(setup)) {
-        contract = await this.deployFactory(setup, deployer);
-      } else {
-        const ret = await this.env.deployments.deploy(
-          setup.artifact,
-          [],
-          deployer
-        );
-        contract = ret[0];
-      }
-    } else {
-      contract = await this.getContractInstance(
-        setup.artifact,
-        setup.address,
-        deployer
-      );
-    }
+    // if (setup.address === undefined) {
+    // if (isFactorySetup(setup)) {
+    //   contract = await this.deployFactory(setup, deployer);
+    // } else {
+    //   const ret = await this.env.deployments.deploy(
+    //     setup.artifact,
+    //     [],
+    //     deployer
+    //   );
+    //   contract = ret[0];
+    // }
+    contract = await this.env.deployments.deployContract(setup);
+    // } else {
+    //   contract = await this.getContractInstance(
+    //     setup.artifact,
+    //     setup.address,
+    //     deployer
+    //   );
+    // }
     return contract;
   }
   public async deployFactory(
@@ -72,6 +74,7 @@ export class Erasure {
     return factory;
   }
 
+  // this go to deployments
   public async getContractInstance(
     name: string,
     address?: string,
@@ -91,9 +94,9 @@ export class Erasure {
       throw new Error("unable to resolve" + name + "address");
     }
 
-    const contract = await this.env.deployments.getContract(name, signer);
+    const factory = await this.env.deployments.getContractFactory(name, signer);
 
-    return contract.attach(address);
+    return factory.attach(address);
   }
 
   // Creates an instance from a Factory.

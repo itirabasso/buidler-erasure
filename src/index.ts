@@ -38,91 +38,73 @@ task(TASK_CLEAN, async (_, __, runSuper) => {
   console.log("Deploy clean");
 });
 
+
 const deployNMRToken = async (setup, nmrSigner, { erasure, ethers }) => {
   const signers = await ethers.signers();
-  if (await nmrSigner.impersonate()) {
-    // send ether to the nmr signer
-    await signers[9].sendTransaction({
-      to: setup.signer,
-      value: utils.parseEther("5")
-    });
+  // if (await nmrSigner.impersonate()) {
+  // send ether to the nmr signer
+  const giver = signers[9];
+  // console.log('pre balance giver', await ethers.provider.getBalance(await giver.getAddress()))
+  // console.log('pre balance nmr signer', await ethers.provider.getBalance(await nmrSigner.getAddress()))
 
-    // increment nmr signer nonce by 1
-    await nmrSigner.sendTransaction({
-      to: setup.signer,
-      value: 0
-    });
+  await signers[9].sendTransaction({
+    to: setup.signer,
+    value: utils.parseEther("5")
+  });
+  // console.log('post balance giver', await ethers.provider.getBalance(await giver.getAddress()))
+  // console.log('post balance nmr', await ethers.provider.getBalance(await nmrSigner.getAddress()))
+  // console.log('sent moneys')
+  // increment nmr signer nonce by 1
 
-    return erasure.deployContract(setup, nmrSigner);
-  } else {
-    if (erasure.getErasureSetup().nmrDeployTx === undefined) {
-      throw new Error("need a deploy tx");
-    }
+  await nmrSigner.sendTransaction({
+    to: await nmrSigner.getAddress(),
+    value: 0
+  });
 
-    await ethers.provider.send("eth_sendRawTransaction", [
-      erasure.getErasureSetup().nmrDeployTx
-    ]);
-
-    // use the deployed connected to the deployer signer.
-    // return nmr;
-  }
+  return erasure.deployContract(setup, nmrSigner);
 };
 
-internalTask("erasure:erasure-setup").setAction(
-  async (_, { erasure, ethers }: BuidlerRuntimeEnvironment) => {
+task("deploy").setAction(
+  async (_, { erasure, ethers, deployments }: BuidlerRuntimeEnvironment) => {
     const signers = await ethers.signers();
     const deployer = signers[0];
 
-    const erasureSetup: ErasureSetup = erasure.getErasureSetup();
+    const contracts = await deployments.deploySetup();
 
-    const sortedContracts = Object.values(erasureSetup.contracts).sort(
-      setup => {
-        switch (setup.type) {
-          case "token":
-            return -1;
-          case "template":
-          case "registry":
-            return 0;
-          case "factory":
-            return 1;
-        }
-      }
-    );
+    // for (const setup of sortedContracts) {
+    //   if (setup.address === undefined) {
+    //     switch (setup.type) {
+    //       case "token":
+    //         if (setup.signer === undefined) {
+    //           setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
+    //         }
+    //         const p = ethers.provider;
+    //         p.resolveName = async(addr) => addr;
+    //         let nmrSigner = new FakeSigner(setup.signer, p);
 
-    const contracts: { [key: string]: Contract } = {};
+    //         contracts[setup.artifact] = await deployNMRToken(setup, nmrSigner, {
+    //           ethers,
+    //           erasure
+    //         });
+    //         break;
 
-    for (const setup of sortedContracts) {
-      if (setup.address === undefined) {
-        switch (setup.type) {
-          case "token":
-            if (setup.signer === undefined) {
-              setup.signer = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
-            }
-            const nmrSigner = new FakeSigner(setup.signer, ethers.provider);
+    //       case "registry":
+    //       case "template":
+    //       case "factory":
+    //         contracts[setup.artifact] = await erasure.deployContract(
+    //           setup,
+    //           deployer
+    //         );
+    //         break;
+    //     }
+    //   } else {
+    //     contracts[setup.artifact] = await erasure.getContractInstance(
+    //       setup.artifact,
+    //       setup.address,
+    //       deployer
+    //     );
+    //   }
 
-            contracts[setup.artifact] = await deployNMRToken(setup, nmrSigner, {
-              ethers,
-              erasure
-            });
-            break;
-
-          case "registry":
-          case "template":
-          case "factory":
-            contracts[setup.artifact] = await erasure.deployContract(
-              setup,
-              deployer
-            );
-            break;
-        }
-      } else {
-        contracts[setup.artifact] = await erasure.getContractInstance(
-          setup.artifact,
-          setup.address,
-          deployer
-        );
-      }
-    }
 
     console.log("Erasure deployed:", Object.keys(contracts));
     return contracts;

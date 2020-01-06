@@ -14,9 +14,11 @@ import { Erasure } from "./erasure";
 import { Deployments } from "./deployments";
 
 declare module "@nomiclabs/buidler/types" {
+  // export type NetworkConfig = BuidlerNetworkConfig | HttpNetworkConfig;
+
   export interface Networks {
-    // [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup };
-    [networkName: string]: NetworkConfig & any;
+    [networkName: string]: NetworkConfig & { erasureSetup?: ErasureSetup };
+    // [networkName: string]: NetworkConfig & any;
   }
 
   export interface BuidlerRuntimeEnvironment {

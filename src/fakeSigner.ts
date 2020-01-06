@@ -1,19 +1,33 @@
-import { EthereumProvider } from "@nomiclabs/buidler/types";
+import { EthereumProvider, IEthereumProvider, NetworkConfig } from "@nomiclabs/buidler/types";
 import { Signer } from "ethers";
 import { TransactionRequest, TransactionResponse } from "ethers/providers";
+import { createFakeProvider } from "@nomiclabs/buidler/internal/core/providers/fake";
 
 export class FakeSigner extends Signer {
   public impersonated: boolean = false;
-  constructor(public readonly address: string, public readonly provider: any) {
+  public provider: any;
+  constructor(public readonly address: string, provider: any) {
     super();
+    const networkName: string = 'develop';
+    const networkConfig: NetworkConfig = {
+      url: "http://localhost:8545",
+      accounts: [address],
+      gas: 5500000,
+      gasPrice: 100000000000
+    };
+    this.provider = createFakeProvider(networkName, networkConfig)
+    this.provider.resolveName = async (addr) => addr;
+
+    // console.log(provider);
+    // this.provider = provider;
   }
 
   public async impersonate(): Promise<boolean> {
     try {
       this.impersonated = await (this
         .provider as EthereumProvider).send("buidler_impersonateAccount", [
-        this.address
-      ]);
+          this.address
+        ]);
     } catch (error) {
       console.error("provider does not support impersonation");
       this.impersonated = false;
@@ -41,9 +55,9 @@ export class FakeSigner extends Signer {
       data: transaction.data,
       nonce: transaction.nonce
     };
-
+    // console.log(transaction)
     const txHash = await (this
-      .provider as EthereumProvider).send("eth_sendFakeTransaction", [params]);
+      .provider as EthereumProvider).send("eth_sendTransaction", [params]);
     const tx = await (this
       .provider as EthereumProvider).send("eth_getTransactionByHash", [txHash]);
 

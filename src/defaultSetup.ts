@@ -1,3 +1,7 @@
+import { Contract } from "ethers";
+import { TransactionReceipt } from "ethers/providers";
+
+import { DeploySetup } from "./deployments";
 import { ErasureSetup } from "./erasureSetup";
 
 export const defaultNMR = "MockNMR";
@@ -14,68 +18,81 @@ export const defaultRegistries: string[] = [
 
 const nmrSigner = "0x9608010323ed882a38ede9211d7691102b4f0ba0";
 
-export const defaultSetup: ErasureSetup = {
-  contracts: {
-    MockNMR: {
-      type: "token",
+// contract: Contract,
+// receipt: TransactionReceipt,
+const getFactoryParams = (context: any): any[] => {
+  const registry = context[context.registry].address;
+  const template = context[context.template].address;
+  return [registry, template];
+};
+
+export const defaultSetup: DeploySetup = {
+  init: () => {},
+  contracts: [
+    {
+      name: "MockNMR",
       artifact: "MockNMR",
       signer: nmrSigner
     },
-    Erasure_Agreements: {
-      type: "registry",
-      artifact: "Erasure_Agreements"
+    {
+      name: "Erasure_Agreements"
     },
-    Erasure_Posts: {
-      type: "registry",
-      artifact: "Erasure_Posts"
+    {
+      name: "Erasure_Posts"
     },
-    Erasure_Users: {
-      type: "registry",
-      artifact: "Erasure_Users"
+    {
+      name: "Erasure_Users"
     },
-    Erasure_Escrows: {
-      type: "registry",
-      artifact: "Erasure_Escrows"
+    {
+      name: "Erasure_Escrows"
     },
-    Feed: {
-      type: "template",
-      artifact: "Feed"
+    {
+      name: "Feed"
     },
-    SimpleGriefing: {
-      type: "template",
-      artifact: "SimpleGriefing"
+    {
+      name: "SimpleGriefing"
     },
-    CountdownGriefing: {
-      type: "template",
-      artifact: "CountdownGriefing"
+    {
+      name: "CountdownGriefing"
     },
-    CountdownGriefingEscrow: {
-      type: "template",
-      artifact: "CountdownGriefingEscrow"
+    {
+      name: "CountdownGriefingEscrow"
     },
-    Feed_Factory: {
-      type: "factory",
+    {
+      name: "Feed_Factory",
       artifact: "Feed_Factory",
-      template: "Feed",
-      registry: "Erasure_Posts"
+      context: {
+        template: "Feed",
+        registry: "Erasure_Posts"
+      },
+      params: getFactoryParams
     },
-    SimpleGriefing_Factory: {
-      type: "factory",
+    {
+      name: "SimpleGriefing_Factory",
       artifact: "SimpleGriefing_Factory",
-      template: "SimpleGriefing",
-      registry: "Erasure_Agreements"
+      context: {
+        template: "SimpleGriefing",
+        registry: "Erasure_Agreements"
+      },
+      params: getFactoryParams
     },
-    CountdownGriefing_Factory: {
-      type: "factory",
+    {
+      name: "CountdownGriefing_Factory",
       artifact: "CountdownGriefing_Factory",
-      template: "CountdownGriefing",
-      registry: "Erasure_Agreements"
+      context: {
+        template: "CountdownGriefing",
+        registry: "Erasure_Agreements"
+      },
+      params: getFactoryParams
     },
-    CountdownGriefingEscrow_Factory: {
-      type: "factory",
+    {
+      name: "CountdownGriefingEscrow_Factory",
       artifact: "CountdownGriefingEscrow_Factory",
-      template: "CountdownGriefingEscrow",
-      registry: "Erasure_Escrows"
+      context: {
+        template: "CountdownGriefingEscrow",
+        registry: "Erasure_Escrows"
+      },
+      params: getFactoryParams
     }
-  }
+  ]
 };

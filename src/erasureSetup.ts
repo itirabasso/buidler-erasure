@@ -12,6 +12,7 @@ export type TemplateNames =
 export type ContractType = "token" | "registry" | "factory" | "template";
 
 export interface ContractSetup {
+  name: string;
   type: ContractType;
   artifact: string;
   address?: string;
@@ -38,3 +39,8 @@ export interface ErasureSetup {
   contracts: { [name: string]: ContractSetup | FactorySetup };
   nmrDeployTx?: string;
 }
+
+// export interface DeploySetup {
+//   contracts: ContractSetup[]
+//   nmrDeployTx?: string;
+// }
