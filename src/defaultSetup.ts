@@ -26,6 +26,12 @@ const getFactoryParams = (context: any): any[] => {
   return [registry, template];
 };
 
+const afterFactoryDeploy = async (contract: Contract, recipt: TransactionReceipt, context: any) => {
+  const registry = context[context.registry].address;
+  await registry.addFactory(contract.address, "0x");
+  // modify context?
+}
+
 export const defaultSetup: DeploySetup = {
   init: () => {},
   contracts: [
@@ -60,7 +66,6 @@ export const defaultSetup: DeploySetup = {
     },
     {
       name: "Feed_Factory",
-      artifact: "Feed_Factory",
       context: {
         template: "Feed",
         registry: "Erasure_Posts"
@@ -69,7 +74,6 @@ export const defaultSetup: DeploySetup = {
     },
     {
       name: "SimpleGriefing_Factory",
-      artifact: "SimpleGriefing_Factory",
       context: {
         template: "SimpleGriefing",
         registry: "Erasure_Agreements"
@@ -78,7 +82,6 @@ export const defaultSetup: DeploySetup = {
     },
     {
       name: "CountdownGriefing_Factory",
-      artifact: "CountdownGriefing_Factory",
       context: {
         template: "CountdownGriefing",
         registry: "Erasure_Agreements"
@@ -87,7 +90,6 @@ export const defaultSetup: DeploySetup = {
     },
     {
       name: "CountdownGriefingEscrow_Factory",
-      artifact: "CountdownGriefingEscrow_Factory",
       context: {
         template: "CountdownGriefingEscrow",
         registry: "Erasure_Escrows"

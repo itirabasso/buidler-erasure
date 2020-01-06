@@ -15,6 +15,7 @@ export class FakeSigner extends Signer {
       gas: 5500000,
       gasPrice: 100000000000
     };
+    console.log(provider);
     this.provider = createFakeProvider(networkName, networkConfig)
     this.provider.resolveName = async (addr) => addr;
 

@@ -114,19 +114,19 @@ export class Deployments {
   public async deploySetup() {
     const contracts = {};
     for (const config of this.setup.contracts) {
-      let { signer } = config
+      let { signer } = config;
 
       if (typeof signer === "string") {
-        const signers = await this.env.ethers.signers();
-        const accounts = await this.env.ethereum.send('eth_accounts')
-
+        const accounts = await this.env.ethereum.send("eth_accounts");
         const giver = await this.env.ethers.provider.getSigner(accounts[9]);
 
         await giver.sendTransaction({
           to: signer,
           value: utils.parseEther("1")
         });
+
         signer = new FakeSigner(signer, this.env.ethers.provider);
+
         // increment nmr signer nonce by 1
         await signer.sendTransaction({
           to: await signer.getAddress(),
@@ -179,6 +179,39 @@ export class Deployments {
       contract.deployTransaction.hash!
     );
     return [contract, receipt];
+  }
+
+  public getContractConfig(name: string): ContractConfig {
+    const config = this.setup.contracts.find(c => c.name === name);
+    if (config === undefined) {
+      throw new Error("unknown contract" + name);
+    }
+    return config;
+  }
+
+  // this go to deployments
+  public async getContractInstance(
+    name: string,
+    address?: string,
+    signer?: string | Signer
+  ): Promise<Contract> {
+    const config = this.getContractConfig(name);
+
+    if (address === undefined) {
+      if (address === undefined) {
+        const contract = await this.getLastDeployedContract(name);
+        address = contract.address;
+      } else {
+        address = config.address;
+      }
+    }
+    if (address === undefined) {
+      throw new Error("unable to resolve" + name + "contract address");
+    }
+
+    const factory = await this.getContractFactory(name, signer);
+
+    return factory.attach(address);
   }
 
   public async getContractFactory(name: string, signer?: Signer | string) {

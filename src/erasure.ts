@@ -3,16 +3,8 @@ import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
 
-import {
-  ContractSetup,
-  ErasureSetup,
-  FactorySetup,
-  isFactorySetup,
-  TemplateNames,
-  TemplateSetup
-} from "./erasureSetup";
 import { abiEncodeWithSelector } from "./utils";
-import { ContractConfig } from "./deployments";
+import { ContractConfig, DeploySetup } from "./deployments";
 
 export class Factory {
   constructor(
@@ -26,7 +18,7 @@ export class Template { }
 export class Erasure {
   constructor(public readonly env: BuidlerRuntimeEnvironment) { }
 
-  public getErasureSetup(): ErasureSetup {
+  public getErasureSetup(): DeploySetup {
     // return (env.config.networks[env.network.name] as any).erasureSetup;
     return (this.env.network.config as any).erasureSetup;
   }
@@ -57,82 +49,37 @@ export class Erasure {
     // }
     return contract;
   }
-  public async deployFactory(
-    setup: FactorySetup,
-    signer?: Signer | string
-  ): Promise<Contract> {
-    const registry = await this.getContractInstance(setup.registry);
-    const template = await this.getContractInstance(setup.template);
+  // public async deployFactory(
+  //   setup: FactorySetup,
+  //   signer?: Signer | string
+  // ): Promise<Contract> {
+  //   const registry = await this.getContractInstance(setup.registry);
+  //   const template = await this.getContractInstance(setup.template);
 
-    const [factory] = await this.env.deployments.deploy(
-      setup.artifact,
-      [registry.address, template.address],
-      signer
-    );
+  //   const [factory] = await this.env.deployments.deploy(
+  //     setup.artifact,
+  //     [registry.address, template.address],
+  //     signer
+  //   );
 
-    await registry.addFactory(factory.address, "0x");
-    return factory;
-  }
-
-  // this go to deployments
-  public async getContractInstance(
-    name: string,
-    address?: string,
-    signer?: string | Signer
-  ): Promise<Contract> {
-    const setup = this.getErasureSetup().contracts[name];
-    if (address === undefined) {
-      if (setup.address === undefined) {
-        address = (
-          await this.env.deployments.getLastDeployedContract(setup.artifact)
-        ).address;
-      } else {
-        address = setup.address;
-      }
-    }
-    if (address === undefined) {
-      throw new Error("unable to resolve" + name + "address");
-    }
-
-    const factory = await this.env.deployments.getContractFactory(name, signer);
-
-    return factory.attach(address);
-  }
+  //   await registry.addFactory(factory.address, "0x");
+  //   return factory;
+  // }
 
   // Creates an instance from a Factory.
   public async createInstance(
-    template: TemplateNames,
+    templateName: string,
     values: any[]
   ): Promise<Contract> {
-    const getSetup = (name: string): ContractSetup => {
-      const setup = this.getErasureSetup().contracts[name];
-      if (setup === undefined) {
-        throw new Error("Setup not found for " + name);
-      }
-      return setup;
-    };
+    // TODO : the suffix can be configurable
+    const factoryName = templateName + "_Factory";
 
-    const getFactoryName = (name: TemplateNames, setup: TemplateSetup) => {
-      // TODO : the suffix can be configurable
-      return setup.factory !== undefined ? setup.factory : name + "_Factory";
-    };
+    const factory = await this.env.deployments.getContractInstance(factoryName);
+    const template = await this.env.deployments.getContractInstance(templateName);
 
-    const templateSetup = getSetup(template) as TemplateSetup;
-    const factorySetup = getSetup(getFactoryName(template, templateSetup));
-
-    const factoryInstance = await this.getContractInstance(
-      factorySetup.artifact,
-      factorySetup.address
-    );
-    const templateInstance = await this.getContractInstance(
-      templateSetup.artifact,
-      templateSetup.address
-    );
-
-    return this._createInstance(templateInstance, factoryInstance, values);
+    return this._createInstance(template, factory, values);
   }
 
-  // params: any[],
   private async _createInstance(
     template: Contract,
     factory: Contract,
