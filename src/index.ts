@@ -5,20 +5,19 @@ import {
 import {
   extendConfig,
   extendEnvironment,
-  internalTask,
   task,
   usePlugin
 } from "@nomiclabs/buidler/config";
 import { createChainIdGetter } from "@nomiclabs/buidler/internal/core/providers/provider-utils";
-import { ensurePluginLoadedWithUsePlugin } from "@nomiclabs/buidler/plugins";
+import {
+  ensurePluginLoadedWithUsePlugin,
+  lazyObject
+} from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
-import { Contract, utils } from "ethers";
 
 import { defaultSetup } from "./defaultSetup";
 import { Deployments } from "./deployments";
 import { Erasure } from "./erasure";
-import { ErasureSetup } from "./erasureSetup";
-import { FakeSigner } from "./fakeSigner";
 import { ensureStateFile, setInitialState } from "./utils";
 
 usePlugin("@nomiclabs/buidler-ethers");
@@ -40,7 +39,6 @@ task(TASK_CLEAN, async (_, __, runSuper) => {
 
 task("deploy").setAction(
   async (_, { erasure, ethers, deployments }: BuidlerRuntimeEnvironment) => {
-
     const contracts = await deployments.deploySetup();
 
     console.log("Erasure deployed:", Object.keys(contracts));
@@ -59,6 +57,11 @@ extendConfig((config, userConfig) => {
 
 extendEnvironment((env: BuidlerRuntimeEnvironment) => {
   const chainIdGetter = createChainIdGetter(env.ethereum);
-  env.erasure = new Erasure(env);
-  env.deployments = new Deployments(env, chainIdGetter);
+
+  env.erasure = lazyObject(() => {
+    return new Erasure(env);
+  });
+  env.deployments = lazyObject(() => {
+    return new Deployments(env, chainIdGetter)
+  });
 });

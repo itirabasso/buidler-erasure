@@ -1,70 +1,11 @@
-import { readArtifactSync } from "@nomiclabs/buidler/plugins";
 import { BuidlerRuntimeEnvironment } from "@nomiclabs/buidler/types";
 import { Contract, Signer } from "ethers";
 import { BigNumber } from "ethers/utils";
 
 import { abiEncodeWithSelector } from "./utils";
-import { ContractConfig, DeploySetup } from "./deployments";
-
-export class Factory {
-  constructor(
-    public readonly factory: Contract,
-    public readonly template: Contract
-  ) { }
-}
-
-export class Template { }
 
 export class Erasure {
-  constructor(public readonly env: BuidlerRuntimeEnvironment) { }
-
-  public getErasureSetup(): DeploySetup {
-    // return (env.config.networks[env.network.name] as any).erasureSetup;
-    return (this.env.network.config as any).erasureSetup;
-  }
-
-  public async deployContract(
-    setup: ContractConfig,
-    deployer?: Signer | string
-  ): Promise<Contract> {
-    let contract: Contract;
-    // if (setup.address === undefined) {
-    // if (isFactorySetup(setup)) {
-    //   contract = await this.deployFactory(setup, deployer);
-    // } else {
-    //   const ret = await this.env.deployments.deploy(
-    //     setup.artifact,
-    //     [],
-    //     deployer
-    //   );
-    //   contract = ret[0];
-    // }
-    contract = await this.env.deployments.deployContract(setup);
-    // } else {
-    //   contract = await this.getContractInstance(
-    //     setup.artifact,
-    //     setup.address,
-    //     deployer
-    //   );
-    // }
-    return contract;
-  }
-  // public async deployFactory(
-  //   setup: FactorySetup,
-  //   signer?: Signer | string
-  // ): Promise<Contract> {
-  //   const registry = await this.getContractInstance(setup.registry);
-  //   const template = await this.getContractInstance(setup.template);
-
-  //   const [factory] = await this.env.deployments.deploy(
-  //     setup.artifact,
-  //     [registry.address, template.address],
-  //     signer
-  //   );
-
-  //   await registry.addFactory(factory.address, "0x");
-  //   return factory;
-  // }
+  constructor(private readonly env: BuidlerRuntimeEnvironment) {}
 
   // Creates an instance from a Factory.
   public async createInstance(
@@ -96,9 +37,7 @@ export class Erasure {
 
     await tx.wait();
 
-    const receipt = await this.env.ethers.provider.getTransactionReceipt(
-      tx.hash
-    );
+    const receipt = await this.env.ethers.provider.getTransactionReceipt(tx.hash);
 
     for (const log of receipt.logs!) {
       const event = factory.interface.parseLog(log);

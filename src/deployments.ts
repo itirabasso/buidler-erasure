@@ -11,10 +11,14 @@ export interface ContractConfig {
   // params: string[];
   signer?: string | Signer;
   context?: any;
-  params?: any; // (context: any): any[] | any[]
+  params?: (context: any) => any[] | any[];
+  after?: (
+    contract: Contract,
+    receipt: TransactionReceipt,
+    context: any
+  ) => any;
   address?: string;
   artifact?: string;
-  type?: any;
 }
 
 export interface DeploySetup {
@@ -116,6 +120,7 @@ export class Deployments {
     for (const config of this.setup.contracts) {
       let { signer } = config;
 
+      // support unlocked/impersonated accounts
       if (typeof signer === "string") {
         const accounts = await this.env.ethereum.send("eth_accounts");
         const giver = await this.env.ethers.provider.getSigner(accounts[9]);
@@ -141,7 +146,7 @@ export class Deployments {
   }
 
   public async deployContract(config: ContractConfig): Promise<Contract> {
-    const { name, params, signer, context, artifact } = config;
+    const { name, params, signer, context, artifact, after } = config;
     // build local context
     const ctx = { ...this.context, ...context };
     const values = typeof params === "function" ? params(ctx) : params;
@@ -158,6 +163,11 @@ export class Deployments {
       contract,
       receipt
     };
+
+    if (after !== undefined) {
+      // store return value into context?
+      await after(contract, receipt, ctx);
+    }
 
     return contract;
   }
@@ -216,17 +226,14 @@ export class Deployments {
 
   public async getContractFactory(name: string, signer?: Signer | string) {
     signer = await this.getSigner(signer);
-    const { abi, bytecode } = await readArtifact(
-      this.env.config.paths.artifacts,
-      name
-    );
+    const { abi, bytecode } = await readArtifact(this.env.config.paths.artifacts, name);
     return new ContractFactory(abi, bytecode, signer);
   }
 
   private async getChainId(chainId?: number): Promise<number> {
     if (chainId === undefined) {
       chainId =
-        this.env.network.config.chainId === undefined
+      this.env.network.config.chainId === undefined
           ? await this.chainIdGetter()
           : this.env.network.config.chainId;
     }

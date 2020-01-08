@@ -2,7 +2,6 @@ import { Contract } from "ethers";
 import { TransactionReceipt } from "ethers/providers";
 
 import { DeploySetup } from "./deployments";
-import { ErasureSetup } from "./erasureSetup";
 
 export const defaultNMR = "MockNMR";
 export const defaultFactories: string[] = [
@@ -26,11 +25,15 @@ const getFactoryParams = (context: any): any[] => {
   return [registry, template];
 };
 
-const afterFactoryDeploy = async (contract: Contract, recipt: TransactionReceipt, context: any) => {
-  const registry = context[context.registry].address;
+const afterFactoryDeploy = async (
+  contract: Contract,
+  recipt: TransactionReceipt,
+  context: any
+) => {
+  const registry = context[context.registry].contract;
   await registry.addFactory(contract.address, "0x");
   // modify context?
-}
+};
 
 export const defaultSetup: DeploySetup = {
   init: () => {},
@@ -70,7 +73,8 @@ export const defaultSetup: DeploySetup = {
         template: "Feed",
         registry: "Erasure_Posts"
       },
-      params: getFactoryParams
+      params: getFactoryParams,
+      after: afterFactoryDeploy
     },
     {
       name: "SimpleGriefing_Factory",
@@ -78,7 +82,8 @@ export const defaultSetup: DeploySetup = {
         template: "SimpleGriefing",
         registry: "Erasure_Agreements"
       },
-      params: getFactoryParams
+      params: getFactoryParams,
+      after: afterFactoryDeploy
     },
     {
       name: "CountdownGriefing_Factory",
@@ -86,7 +91,8 @@ export const defaultSetup: DeploySetup = {
         template: "CountdownGriefing",
         registry: "Erasure_Agreements"
       },
-      params: getFactoryParams
+      params: getFactoryParams,
+      after: afterFactoryDeploy
     },
     {
       name: "CountdownGriefingEscrow_Factory",
@@ -94,7 +100,8 @@ export const defaultSetup: DeploySetup = {
         template: "CountdownGriefingEscrow",
         registry: "Erasure_Escrows"
       },
-      params: getFactoryParams
+      params: getFactoryParams,
+      after: afterFactoryDeploy
     }
   ]
 };
